@@ -1,0 +1,17 @@
+{
+  "name": "tripick",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TRIPICK — 돈키호테 화장품을 찍으면 한국어 제품 정보와 원화 가격을 보여주는 웹앱",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/check.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

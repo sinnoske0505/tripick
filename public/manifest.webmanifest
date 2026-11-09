@@ -1,0 +1,10 @@
+{
+  "name": "TRIPICK",
+  "short_name": "TRIPICK",
+  "description": "돈키호테 화장품을 찍으면 한국어 제품 정보와 원화 가격을 보여줘요",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#D2361F",
+  "theme_color": "#D2361F",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
