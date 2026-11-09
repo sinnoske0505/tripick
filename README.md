@@ -12,8 +12,8 @@
 | `api/pricetag.js` | 2차 촬영: 가격표 사진을 읽고 5가지 기준으로 판별 |
 | `api/info.js` | 오늘 환율, 제품 수 |
 | `lib/pricecheck.js` | 판별 기준 (제품 일치·용량 일치·가격 범위 0.5~2배·숫자 읽기·세금 구분) |
-| `data/products.json` | 제품 DB 40개 (구글 시트 TRIPICK_제품DB2와 같은 내용) + 환율 |
-| `server.js` | 화면과 API를 함께 돌리는 서버 |
+| `data/products.js` | 제품 DB 40개 (구글 시트 TRIPICK_제품DB2와 같은 내용) + 환율 |
+| `local/server.js` | 내 컴퓨터에서 화면과 API를 함께 돌리는 테스트 서버 (Vercel에서는 안 씀) |
 
 ## API 키는 어디에 넣나요
 
@@ -36,7 +36,7 @@ Node.js 20 이상이 필요합니다.
 
 ```
 npm install
-ANTHROPIC_API_KEY=sk-ant-... npm start
+ANTHROPIC_API_KEY=sk-ant-... npm run local
 ```
 
 브라우저에서 http://localhost:3000 을 엽니다. `npm test` 로 판별 로직을 확인할 수 있습니다.

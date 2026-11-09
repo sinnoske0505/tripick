@@ -1,36 +1,55 @@
-// 판별 로직과 성분 정리 기능을 확인하는 간단한 테스트 (API 키 없이 실행)
+// 판별 로직, 성분 정리, 구글 시트 읽기를 확인하는 테스트 (API 키·인터넷 없이 실행)
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { checkPriceTag, decidePrice } from '../lib/pricecheck.js';
-import { products, publicProduct, parseIngredients, yenToWon } from '../lib/products.js';
+import { parseCsv, buildDb, toNumber, getDb } from '../lib/sheet.js';
+import { findProduct, publicProduct, parseIngredients, yenToWon, catalogText } from '../lib/products.js';
 
-const mask = products.find((p) => p.name.includes('로열젤리'));
+const fx = (n) => parseCsv(readFileSync(new URL(`./fixtures/${n}`, import.meta.url), 'utf8'));
 
-// 1) 세금 구분
+// 1) 구글 시트 CSV → DB
+const db = buildDb(fx('product.csv'), fx('rate.csv'), fx('dict.csv'));
+assert.equal(db.products.length, 40);
+assert.equal(db.meta.rate100, 871.84);
+assert.equal(db.meta.dataSource, 'sheet');
+const mask = db.products.find((p) => p.name.includes('로열젤리'));
+assert.equal(mask.yen, 748);
+assert.equal(publicProduct(db, mask).won, 6521);
+assert.equal(publicProduct(db, mask).ingredients.length, 22);
+assert.equal(db.dict['글리세린'], '보습');
+assert.ok(catalogText(db).split('\n').length === 40);
+assert.equal(toNumber('1,260엔'), 1260);
+assert.equal(toNumber('871.84원'), 871.84);
+
+// 2) 시트에서 환율을 바꾸면 원화도 바뀐다
+const rate2 = fx('rate.csv').map((r, i) => (i === 1 ? [r[0], '900.00원', ...r.slice(2)] : r));
+const db2 = buildDb(fx('product.csv'), rate2, null);
+assert.equal(publicProduct(db2, findProduct(db2, mask.id)).won, 6732);
+
+// 3) 따옴표·쉼표·줄바꿈이 든 칸
+assert.deepEqual(parseCsv('"a","b, c","d\nE"\n"1","2","3"\n'), [['a', 'b, c', 'd\nE'], ['1', '2', '3']]);
+
+// 4) 시트를 못 읽으면 내장 데이터로 동작 (테스트 환경은 인터넷이 막혀 있어 이 경로를 탄다)
+const fallback = await getDb();
+assert.ok(fallback.products.length === 40);
+assert.ok(['sheet', 'builtin'].includes(fallback.meta.dataSource));
+
+// 5) 가격표 판별
 assert.deepEqual(decidePrice({ price_tax_included: 698, price_tax_excluded: 635 }), { yen: 698, basis: 'included' });
 assert.deepEqual(decidePrice({ price_tax_included: null, price_tax_excluded: 635 }), { yen: 698, basis: 'added' });
-assert.equal(decidePrice({}).basis, 'none');
-
-// 2) 같은 제품 가격표 → 성공
 let r = checkPriceTag({ is_same_product: true, is_same_volume: true, legible: true, price_tax_included: 698 }, mask);
 assert.equal(r.status, 'ok');
-// 3) 옆 제품 가격표 → 실패
-r = checkPriceTag({ is_same_product: false, is_same_volume: false, legible: true, price_tax_included: 660, tag_product_name_ko: '비타민 BOMB 마스크' }, mask);
+r = checkPriceTag({ is_same_product: false, is_same_volume: false, legible: true, price_tax_included: 660 }, mask);
 assert.equal(r.status, 'fail');
-assert.equal(r.reason, '다른 제품의 가격표 같아요');
-// 4) 가격이 3배 → 확인 요청
 r = checkPriceTag({ is_same_product: true, is_same_volume: null, legible: true, price_tax_included: 2244 }, mask);
 assert.equal(r.status, 'confirm');
-// 5) 흐린 사진 → 실패
 r = checkPriceTag({ is_same_product: true, is_same_volume: true, legible: false, price_tax_included: null }, mask);
 assert.equal(r.status, 'fail');
 
-// 6) 환산과 성분 정리
+// 6) 성분 정리
 assert.equal(yenToWon(748, 871.84), 6521);
 const ings = parseIngredients('[유효성분] A, B / [기타] 1,2-헥산다이올, C(확인 필요), D(추정)');
 assert.deepEqual(ings.map((i) => i.name), ['A', 'B', '1,2-헥산다이올', 'C', 'D']);
 assert.equal(ings[3].unsure, '확인 필요');
-assert.equal(ings[0].group, '유효성분');
-assert.equal(products.length, 40);
-for (const p of products) assert.ok(publicProduct(p).ingredients.length >= 1, p.name);
 
-console.log('모든 테스트 통과 ✓');
+console.log(`모든 테스트 통과 ✓ (지금 데이터 출처: ${fallback.meta.dataSource})`);

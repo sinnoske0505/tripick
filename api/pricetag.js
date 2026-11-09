@@ -1,6 +1,6 @@
 // 2차 촬영: 가격표 사진 → 읽고 판별하기
 import { askWithImage } from '../lib/claude.js';
-import { findProduct, yenToWon, meta } from '../lib/products.js';
+import { getDb, findProduct, yenToWon } from '../lib/products.js';
 import { checkPriceTag } from '../lib/pricecheck.js';
 import { sendJson, readBody, handleError } from '../lib/http.js';
 
@@ -13,7 +13,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'POST만 됩니다.' });
   try {
     const { image, productId } = await readBody(req);
-    const product = findProduct(productId);
+    const db = await getDb();
+    const product = findProduct(db, productId);
     if (!product) return sendJson(res, 400, { error: '먼저 제품을 찍어주세요.' });
 
     const prompt = `비교할 제품: ${product.brand} / ${product.name} / 온라인몰 표기 "${product.name_site}" / 용량 ${product.vol}
@@ -34,10 +35,10 @@ export default async function handler(req, res) {
 
     return sendJson(res, 200, {
       ...result,
-      won: result.yen ? yenToWon(result.yen) : null,
+      won: result.yen ? yenToWon(result.yen, db.meta.rate100) : null,
       onlineYen: product.yen,
       tag: { name: tag.tag_product_name_ko || tag.tag_product_name || '', volume: tag.tag_volume || '' },
-      rate: { rate100: meta.rate100, date: meta.rateDate },
+      rate: { rate100: db.meta.rate100, date: db.meta.rateDate },
     });
   } catch (err) {
     return handleError(res, err);

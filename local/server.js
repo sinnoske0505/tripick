@@ -1,16 +1,16 @@
 // 하나로 도는 서버: 화면 파일(public 폴더)과 API(api 폴더)를 함께 제공한다.
 // 내 컴퓨터 테스트용이자, Render 같은 서비스에 올릴 때 쓰는 서버.
-// 실행: npm start  →  http://localhost:3000
+// 실행: npm run local  →  http://localhost:3000
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import identify from './api/identify.js';
-import pricetag from './api/pricetag.js';
-import info from './api/info.js';
+import identify from '../api/identify.js';
+import pricetag from '../api/pricetag.js';
+import info from '../api/info.js';
 
-const root = fileURLToPath(new URL('./public/', import.meta.url));
+const root = fileURLToPath(new URL('../public/', import.meta.url));
 const PORT = process.env.PORT || 3000;
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',

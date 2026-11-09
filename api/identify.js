@@ -1,6 +1,6 @@
 // 1차 촬영: 제품 사진 → 제품 DB에서 같은 제품 찾기
 import { askWithImage } from '../lib/claude.js';
-import { catalogText, findProduct, publicProduct, meta } from '../lib/products.js';
+import { getDb, catalogText, findProduct, publicProduct } from '../lib/products.js';
 import { sendJson, readBody, handleError } from '../lib/http.js';
 
 const SYSTEM = `너는 일본 돈키호테에서 화장품을 고르는 한국인 여행객을 돕는다.
@@ -12,8 +12,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'POST만 됩니다.' });
   try {
     const { image } = await readBody(req);
+    const db = await getDb();
     const prompt = `제품 목록 (번호 | 브랜드 | 한국어 이름 | 온라인몰 표기 | 용량):
-${catalogText()}
+${catalogText(db)}
 
 사진 속 제품을 위 목록과 비교해서 아래 JSON으로만 답해.
 {
@@ -25,22 +26,22 @@ ${catalogText()}
 }`;
     const ai = await askWithImage({ dataUrl: image, system: SYSTEM, prompt });
 
-    const product = ai.match_id ? findProduct(ai.match_id) : null;
+    const product = ai.match_id ? findProduct(db, ai.match_id) : null;
     const confident = product && Number(ai.confidence) >= 0.6;
     const candidates = (ai.candidates || [])
-      .map(findProduct).filter(Boolean)
+      .map((id) => findProduct(db, id)).filter(Boolean)
       .filter((p) => !product || p.id !== product.id)
       .slice(0, 3)
       .map((p) => ({ id: p.id, name: p.name, vol: p.vol }));
 
     return sendJson(res, 200, {
       found: Boolean(confident),
-      product: confident ? publicProduct(product) : null,
+      product: confident ? publicProduct(db, product) : null,
       lowConfidenceProduct: product && !confident ? { id: product.id, name: product.name, vol: product.vol } : null,
       candidates,
       readText: ai.read_text || '',
       nameGuess: ai.name_ko_guess || '',
-      rate: { rate100: meta.rate100, date: meta.rateDate },
+      rate: { rate100: db.meta.rate100, date: db.meta.rateDate },
     });
   } catch (err) {
     return handleError(res, err);
