@@ -152,6 +152,9 @@ $('#profile-form').addEventListener('submit', (e) => {
   if (before !== JSON.stringify(prof)) save('insight', {}); // 정보가 바뀌면 성분 안내를 새로 받는다
   toast('저장했어요');
   show('home');
+  // 공유 링크로 처음 들어온 사람은 정보 입력 후 그 제품으로 바로 간다
+  const shared = params.get('p');
+  if (shared && !state.sharedOpened) { state.sharedOpened = true; openById(shared); }
 });
 
 /* ---------- 분석 중 화면 (멘트·순서는 그대로, 디자인만 변경) ---------- */
@@ -658,7 +661,7 @@ async function boot() {
     if (!prof || !prof.skin) { openProfile(false); return; }
     show('home');
     const shared = params.get('p');
-    if (shared) openById(shared);
+    if (shared) { state.sharedOpened = true; openById(shared); }
   }, wait);
 }
 boot();
