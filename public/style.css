@@ -119,6 +119,9 @@ button, input { font-family: inherit; color: inherit; font-size: inherit; }
 .price .won { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
 .price .yen { font-size: 15px; color: #D6D6DC; margin-left: 8px; }
 .price .small { font-size: 13px; color: #CFCFD6; }
+.price .refund { display: flex; align-items: baseline; gap: 8px; font-size: 14px; color: #E7E7EC; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.08); }
+.price .refund strong { font-size: 18px; font-weight: 700; color: #fff; }
+.price .refund .yen { margin-left: 0; font-size: 13px; }
 .price .btn { background: #fff; color: var(--ink); min-height: 48px; font-size: 15px; margin-top: 4px; }
 .caution-banner { display: flex; gap: 10px; align-items: flex-start; background: #FFF0F2; color: #8E0F2C; border-radius: 16px; padding: 12px 14px; font-size: 13px; line-height: 1.5; }
 .caution-banner strong { color: var(--danger); }

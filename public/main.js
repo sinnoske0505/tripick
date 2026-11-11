@@ -12,6 +12,12 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 const state = { info: null, product: null, store: null, photo: '', insight: null, prev: 'home' };
 
+/* ---------- 면세 환급 (2026-11-01부터 출국 시 환급 방식) ---------- */
+// 매장에서는 세금 포함 가격을 내고, 세금 제외 ¥5,000 이상이면 출국 때 소비세(10%)를 돌려받는다.
+const REFUND_MIN_YEN = 5000;
+const exTax = (yenIncl) => Math.round(yenIncl / 1.1);
+const toWon = (y) => Math.round(y * (state.info?.rate100 || 0) / 100);
+
 /* ---------- 내 폰에만 저장하는 정보 ---------- */
 const KEYS = { profile: 'tripick.profile.v1', wish: 'tripick.saved.v1', history: 'tripick.history.v1', insight: 'tripick.insight.v1' };
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(KEYS[k])) ?? d; } catch { return d; } };
@@ -291,12 +297,14 @@ function renderResult() {
   const rate = state.info?.rate100 || '-';
   const priceBlock = s
     ? `<span class="tag store">매장 가격</span>
-       <div><span class="won">${won(s.won)}</span><span class="yen">${yen(s.yen)}</span></div>
-       <span class="small">온라인몰 ${yen(p.yen)} · 100엔 = ${rate}원</span>
+       <div><span class="won">${won(s.won)}</span><span class="yen">${yen(s.yen)} 세금 포함</span></div>
+       <div class="refund"><span>면세 환급 받으면</span><strong>${won(toWon(exTax(s.yen)))}</strong><span class="yen">${yen(exTax(s.yen))}</span></div>
+       <span class="small">온라인몰 ${yen(p.yen)} · 100엔 = ${rate}원 · 환급은 세금 제외 ¥5,000 이상 구매 시</span>
        <button class="btn" data-shoot="tag">가격표 다시 찍기</button>`
     : `<span class="tag">온라인몰 기준 가격</span>
-       <div><span class="won">${won(p.won)}</span><span class="yen">${yen(p.yen)}</span></div>
-       <span class="small">매장 가격은 다를 수 있어요 · 100엔 = ${rate}원</span>
+       <div><span class="won">${won(p.won)}</span><span class="yen">${yen(p.yen)} 세금 포함</span></div>
+       <div class="refund"><span>면세 환급 받으면</span><strong>${won(toWon(exTax(p.yen)))}</strong><span class="yen">${yen(exTax(p.yen))}</span></div>
+       <span class="small">매장 가격은 다를 수 있어요 · 100엔 = ${rate}원 · 환급은 세금 제외 ¥5,000 이상 구매 시</span>
        <button class="btn" data-shoot="tag">
          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
          매장 가격표 찍기</button>`;
@@ -526,7 +534,9 @@ function renderWish() {
       </div>`).join('')}</div>
     <div class="total">
       <div class="row"><span class="lbl">선택한 ${sel.length}개 합계</span><span class="w">${won(sumSel)}</span></div>
-      <div class="row"><span class="lbl">엔화</span><span class="w small">${yen(sumSelYen)}</span></div>
+      <div class="row"><span class="lbl">엔화 (세금 포함)</span><span class="w small">${yen(sumSelYen)}</span></div>
+      <div class="row"><span class="lbl">면세 환급 받으면</span><span class="w small">${exTax(sumSelYen) >= REFUND_MIN_YEN ? won(toWon(exTax(sumSelYen))) : '아직 대상 아님'}</span></div>
+      <span class="lbl">${exTax(sumSelYen) >= REFUND_MIN_YEN ? '세금 제외 ¥5,000 이상이라 출국 때 소비세를 돌려받을 수 있어요' : `세금 제외 ${yen(REFUND_MIN_YEN - exTax(sumSelYen))} 더 사면 환급 대상이에요`}</span>
       <div class="row"><span class="lbl">찜 전체 ${list.length}개 합계</span><span class="w small">${won(sumAll)}</span></div>
       ${budget ? `<div class="budget-bar" aria-hidden="true"><span class="${max && sumSel > max ? 'over' : ''}" style="width:${max ? pct : 100}%"></span></div>
         <span class="lbl">${max ? (sumSel > max ? `예산(${BUDGET_LABEL[budget]})보다 ${won(sumSel - max)} 많아요` : `예산(${BUDGET_LABEL[budget]})까지 ${won(max - sumSel)} 남았어요`) : `예산 ${BUDGET_LABEL[budget]}`}</span>` : ''}
