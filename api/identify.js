@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     const db = await getDb();
 
     // ① 포장지 읽기
-    const read = await askWithImage({ dataUrl: image, system: READ_SYSTEM, prompt: READ_PROMPT, maxTokens: 500 });
+    const read = await askWithImage({ dataUrl: image, system: READ_SYSTEM, prompt: READ_PROMPT, maxTokens: 1500 });
 
     // ② 후보 추리기
     const pool = db.products.length <= SMALL_DB
@@ -70,7 +70,7 @@ ${pool.map(line).join('\n')}
   "confidence": 0~1 사이 숫자,
   "candidates": [가능성 있는 다른 후보 번호 최대 3개]
 }`;
-      ai = await askText({ system: MATCH_SYSTEM, prompt, maxTokens: 300 });
+      ai = await askText({ system: MATCH_SYSTEM, prompt, maxTokens: 1200 });
     }
 
     // 후보 목록 밖의 번호는 쓰지 않는다
