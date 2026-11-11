@@ -214,3 +214,16 @@ button, input { font-family: inherit; color: inherit; font-size: inherit; }
 
 #toast { position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 72px); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 14px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; white-space: nowrap; z-index: 40; }
 #toast.show { opacity: 1; }
+
+/* 올리브영 비교 카드 */
+.oy{border:1px solid #f0d7de;background:#fff7f9;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.oy.only{background:#f7f7f8;border-color:#e6e6ea}
+.oy-badge{align-self:flex-start;font-size:12px;font-weight:700;color:#D1224F;background:#fde6ec;border-radius:999px;padding:4px 10px}
+.oy.only .oy-badge{color:#333;background:#e9e9ee}
+.oy p{margin:0;font-size:15px}
+.oy strong{font-size:18px}
+.oy-win{color:#D1224F}
+.oy-lose{color:#2b6cb0}
+.oy-row{display:flex;justify-content:space-between;gap:12px;font-size:15px}
+.oy-row b{white-space:nowrap}
+.oy a{color:inherit;text-decoration:underline}

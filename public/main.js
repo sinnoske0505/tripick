@@ -291,6 +291,34 @@ function ingredientList(ings, cautions) {
   return html;
 }
 
+// 한국 올리브영 온라인몰 가격과 비교 (시트 '올리브영 비교' 탭 기준)
+function oyCard(p, s) {
+  const o = p.oy;
+  if (!o) return '';
+  const date = o.checked ? `${esc(o.checked)} 확인` : '';
+  if (o.onlyDonki) {
+    return `<section class="oy only"><span class="oy-badge">돈키호테에만 있어요</span>
+      <p>한국 올리브영 온라인몰에서는 찾지 못한 제품이에요.</p><span class="small">${date}</span></section>`;
+  }
+  const here = s ? s.won : p.won;
+  const refund = toWon(exTax(s ? s.yen : p.yen));
+  const diff = o.price - here;
+  const head = diff > 0
+    ? `<strong class="oy-win">돈키호테가 ${won(diff)} 저렴해요</strong>`
+    : diff < 0 ? `<strong class="oy-lose">올리브영이 ${won(-diff)} 저렴해요</strong>`
+    : `<strong>가격이 같아요</strong>`;
+  const refundLine = o.price - refund > 0 && diff <= 0
+    ? `<span class="small">면세 환급까지 받으면 돈키호테가 ${won(o.price - refund)} 저렴해요</span>` : '';
+  return `<section class="oy">
+      <span class="oy-badge">한국 올리브영과 비교</span>
+      ${head}
+      <div class="oy-row"><span>올리브영 온라인몰${o.startFrom ? ' (옵션별 시작가)' : ''}</span><b>${won(o.price)}</b></div>
+      <div class="oy-row"><span>${s ? '이 매장' : '돈키호테 온라인몰'} (세금 포함)</span><b>${won(here)}</b></div>
+      ${refundLine}
+      <span class="small">${date}${o.link ? ` · <a href="${esc(o.link)}" target="_blank" rel="noopener">올리브영에서 보기</a>` : ''} · 세일에 따라 달라질 수 있어요</span>
+    </section>`;
+}
+
 function renderResult() {
   const p = state.product;
   const s = state.store;
@@ -309,6 +337,7 @@ function renderResult() {
          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
          매장 가격표 찍기</button>`;
   const wished = load('wish', []).some((x) => x.id === p.id);
+  const oyBlock = oyCard(p, s);
   $('#result-body').innerHTML = `
     <div class="stack">
       <div class="photo" id="p-photo" role="img" aria-label="공식 온라인몰 제품 사진"></div>
@@ -319,6 +348,7 @@ function renderResult() {
       </div>
       <section class="card"><ul class="summary loading" id="p-summary"><li>.</li><li>.</li><li>.</li></ul></section>
       <section class="price">${priceBlock}</section>
+      ${oyBlock}
       <div id="p-caution"></div>
       ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}
       <section class="card acc ings" id="ing-acc">
