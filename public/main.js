@@ -298,10 +298,32 @@ function oyCard(p, s) {
   const date = o.checked ? `${esc(o.checked)} 확인` : '';
   if (o.onlyDonki) {
     return `<section class="oy only"><span class="oy-badge">돈키호테에만 있어요</span>
-      <p>한국 올리브영 온라인몰에서는 찾지 못한 제품이에요.</p><span class="small">${date}</span></section>`;
+      <p>${o.brandLevel ? '이 브랜드는 한국 올리브영 온라인몰에 입점해 있지 않아요.' : '한국 올리브영 온라인몰에서는 찾지 못한 제품이에요.'}</p><span class="small">${date}</span></section>`;
+  }
+  if (o.brandIn) {
+    return `<section class="oy only"><span class="oy-badge">올리브영 입점 브랜드</span>
+      <p>한국 올리브영에도 이 브랜드가 있어요. 같은 제품 가격은 아직 확인 중이에요.</p><span class="small">${date}</span></section>`;
   }
   const here = s ? s.won : p.won;
-  const refund = toWon(exTax(s ? s.yen : p.yen));
+  const hereYen = s ? s.yen : p.yen;
+  const refund = toWon(exTax(hereYen));
+  const link = o.link ? ` · <a href="${esc(o.link)}" target="_blank" rel="noopener">올리브영에서 보기</a>` : '';
+  if (o.differentSize) {
+    const a = parseVol(o.vol), b = parseVol(p.vol);
+    if (!a || !b) return '';
+    const per = (won, v) => Math.round(won / v.n * 100);
+    const oyPer = per(o.price, a), herePer = per(here, b);
+    const diff = oyPer - herePer;
+    const head = diff > 0 ? `<strong class="oy-win">100${b.u}당 돈키호테가 ${won(diff)} 저렴해요</strong>`
+      : diff < 0 ? `<strong class="oy-lose">100${b.u}당 올리브영이 ${won(-diff)} 저렴해요</strong>` : `<strong>용량당 가격이 같아요</strong>`;
+    return `<section class="oy">
+      <span class="oy-badge">한국 올리브영과 비교 · 용량 다름</span>
+      ${head}
+      <div class="oy-row"><span>올리브영 ${esc(o.vol)} ${won(o.price)}</span><b>100${a.u}당 ${won(oyPer)}</b></div>
+      <div class="oy-row"><span>${s ? '이 매장' : '돈키호테'} ${esc(p.vol)} ${won(here)}</span><b>100${b.u}당 ${won(herePer)}</b></div>
+      <span class="small">${date}${link} · 용량이 달라 용량당 가격으로 비교했어요${a.u !== b.u ? ' (g·ml 단위 차이는 무시한 참고값)' : ''}</span>
+    </section>`;
+  }
   const diff = o.price - here;
   const head = diff > 0
     ? `<strong class="oy-win">돈키호테가 ${won(diff)} 저렴해요</strong>`
@@ -315,8 +337,16 @@ function oyCard(p, s) {
       <div class="oy-row"><span>올리브영 온라인몰${o.startFrom ? ' (옵션별 시작가)' : ''}</span><b>${won(o.price)}</b></div>
       <div class="oy-row"><span>${s ? '이 매장' : '돈키호테 온라인몰'} (세금 포함)</span><b>${won(here)}</b></div>
       ${refundLine}
-      <span class="small">${date}${o.link ? ` · <a href="${esc(o.link)}" target="_blank" rel="noopener">올리브영에서 보기</a>` : ''} · 세일에 따라 달라질 수 있어요</span>
+      <span class="small">${date}${link} · 세일에 따라 달라질 수 있어요</span>
     </section>`;
+}
+
+// "150ml", "169g", "30g(4회분)" → { n: 150, u: 'ml' }
+function parseVol(v) {
+  const m = /([\d.]+)\s*(ml|mL|g|ｇ|ｍｌ)/.exec(String(v || ''));
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return n > 0 ? { n, u: /g|ｇ/.test(m[2]) ? 'g' : 'ml' } : null;
 }
 
 function renderResult() {
