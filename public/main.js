@@ -33,7 +33,7 @@ function show(name) {
   el.scrollTop = 0;
   if (name === 'home') renderHome();
   if (name === 'wish') renderWish();
-  if (name === 'history') renderHistory();
+  if (name === 'history') { histSel.on = false; histSel.ids.clear(); renderHistory(); }
 }
 document.addEventListener('click', (e) => {
   const go = e.target.closest('[data-go]');
@@ -582,14 +582,23 @@ function dayLabel(t) {
   return diff === 0 ? '오늘' : diff === 1 ? '어제' : `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
+// 기록 지우기: 체크해서 고른 것만 지운다 (찜 목록과 같은 방식)
+const histSel = { on: false, ids: new Set() };
 function renderHistory() {
   const list = load('history', []);
   if (!list.length) {
+    histSel.on = false; histSel.ids.clear();
     $('#history-body').innerHTML = `<p class="empty">아직 본 제품이 없어요.<br>제품을 찍으면 여기에 차곡차곡 쌓여요.</p>
       <button class="btn primary" data-shoot="product">제품 찍기</button>`;
     return;
   }
+  const CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
   let html = '<div class="stack">';
+  if (histSel.on) {
+    const allOn = histSel.ids.size === list.length;
+    html += `<div class="row-between"><button class="select-all" id="h-all"><span class="check ${allOn ? 'on' : ''}">${CHECK}</span>전체 선택 (${histSel.ids.size}/${list.length})</button>
+      <button class="text-btn" id="h-cancel">취소</button></div>`;
+  }
   let day = '';
   let open = false;
   list.forEach((x) => {
@@ -600,17 +609,45 @@ function renderHistory() {
       html += `<div class="date-label">${d}</div><div class="pgrid">`;
       open = true;
     }
-    html += gridCell(x);
+    html += histSel.on
+      ? `<div class="pcell selectable ${histSel.ids.has(x.id) ? 'picked' : ''}" data-pick-h="${x.id}">
+          <span class="check ${histSel.ids.has(x.id) ? 'on' : ''}">${CHECK}</span>
+          <span class="pimg" ${x.img ? `style="background-image:url('${esc(x.img)}')"` : ''}></span><span class="nm">${esc(x.name)}</span>
+          <div class="foot"><span class="w">${won(x.won)}</span></div></div>`
+      : gridCell(x);
   });
   if (open) html += '</div>';
-  html += `<button class="btn ghost" id="clear-history">기록 지우기</button></div>`;
+  html += histSel.on
+    ? `<button class="btn primary" id="h-del" ${histSel.ids.size ? '' : 'disabled'}>선택한 ${histSel.ids.size}개 지우기</button>`
+    : `<button class="btn ghost" id="clear-history">기록 지우기</button>`;
+  html += '</div>';
   $('#history-body').innerHTML = html;
   $('#history-body').onclick = (e) => {
+    if (histSel.on) {
+      const c = e.target.closest('[data-pick-h]');
+      if (c) { const id = Number(c.dataset.pickH); histSel.ids.has(id) ? histSel.ids.delete(id) : histSel.ids.add(id); renderHistory(); return; }
+      if (e.target.closest('#h-all')) {
+        if (histSel.ids.size === list.length) histSel.ids.clear(); else list.forEach((x) => histSel.ids.add(x.id));
+        renderHistory(); return;
+      }
+      if (e.target.closest('#h-cancel')) { histSel.on = false; histSel.ids.clear(); renderHistory(); return; }
+      if (e.target.closest('#h-del') && histSel.ids.size) {
+        const n = histSel.ids.size;
+        openSheet(`<h2>선택한 ${n}개 기록을 지울까요?</h2><p class="sub">지운 기록은 되돌릴 수 없어요. 찜한 상품은 그대로 남아요.</p>
+          <div class="btn-row"><button class="btn outline" data-close>취소</button><button class="btn primary" id="h-yes">지우기</button></div>`);
+        $('#h-yes').onclick = () => {
+          save('history', load('history', []).filter((x) => !histSel.ids.has(x.id)));
+          histSel.on = false; histSel.ids.clear();
+          closeAll(); renderHistory(); toast(`${n}개 기록을 지웠어요`);
+        };
+      }
+      return;
+    }
     const o = e.target.closest('[data-open]');
     const plus = e.target.closest('[data-plus]');
     if (plus) { wishFromList(Number(plus.dataset.plus)); renderHistory(); return; }
     if (o) openById(o.dataset.open);
-    if (e.target.closest('#clear-history')) { save('history', []); renderHistory(); toast('기록을 지웠어요'); }
+    if (e.target.closest('#clear-history')) { histSel.on = true; histSel.ids.clear(); renderHistory(); }
   };
 }
 
