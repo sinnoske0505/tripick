@@ -238,6 +238,15 @@ function openProduct(p, store = null) {
   loadInsight(p);
 }
 
+// 실제로 열린 공식 사진 주소를 찜·최근 본 제품 썸네일에도 쓴다
+function rememberImage(id, url) {
+  for (const k of ['history', 'wish']) {
+    const list = load(k, []);
+    if (list.some((x) => x.id === id && x.img !== url)) save(k, list.map((x) => (x.id === id ? { ...x, img: url } : x)));
+  }
+  state.imgUrl = { id, url };
+}
+
 // 공식 사진 → 안 되면 다음 주소 → 다 안 되면 내가 찍은 사진
 function officialPhoto(el, p) {
   const urls = [...(p.images || [])];
@@ -249,7 +258,7 @@ function officialPhoto(el, p) {
       return;
     }
     const img = new Image();
-    img.onload = () => { el.style.backgroundImage = `url('${u}')`; };
+    img.onload = () => { el.style.backgroundImage = `url('${u}')`; rememberImage(p.id, u); };
     img.onerror = next;
     img.src = u;
   };
@@ -528,7 +537,7 @@ function toggleWish() {
     toast('찜을 해제했어요');
   } else {
     const s = state.store;
-    list.unshift({ id: p.id, name: p.name, yen: s ? s.yen : p.yen, won: s ? s.won : p.won, type: s ? 'store' : 'online', img: (p.images || [])[0] || '', checked: true });
+    list.unshift({ id: p.id, name: p.name, yen: s ? s.yen : p.yen, won: s ? s.won : p.won, type: s ? 'store' : 'online', img: state.imgUrl?.id === p.id ? state.imgUrl.url : (p.images || [])[0] || '', checked: true });
     toast('찜했어요');
   }
   save('wish', list);
