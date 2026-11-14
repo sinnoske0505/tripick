@@ -292,9 +292,16 @@ body, .p-name, .nm, .bar-title, .sheet h2, .sub { word-break: keep-all; overflow
 .oy .small { font-size: 13px; color: var(--sub); }
 .oy a { color: inherit; text-decoration: underline; }
 
-/* 찜 수량 */
-.pitem { flex-wrap: wrap; }
-.qty { display: flex; align-items: center; border: 1.5px solid var(--milk); border-radius: 8px; overflow: hidden; margin-left: auto; }
-.qty button { width: 34px; height: 32px; border: none; background: var(--secondary); color: var(--ink); font-size: 18px; font-weight: 700; cursor: pointer; padding: 0; }
-.qty button:active { background: var(--primary-hover); }
-.qty span { min-width: 34px; text-align: center; font-size: 15px; font-weight: 700; }
+/* 찜 수량: 제품명 → 가격 → 수량 순서, 버튼은 작게(30px) */
+.wbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.wbody button.open { width: 100%; }
+.row3 { display: flex; align-items: center; justify-content: space-between; }
+.qty { display: inline-flex; align-items: center; border: 1px solid var(--milk); border-radius: 6px; overflow: hidden; }
+.qty button { width: 30px; height: 30px; border: none; background: var(--milk); color: var(--ink); font-size: 16px; font-weight: 700; cursor: pointer; padding: 0; }
+.qty button:active { background: var(--secondary); }
+.qty span { min-width: 30px; text-align: center; font-size: 14px; font-weight: 700; }
+.pitem .del { width: auto; height: 30px; padding: 0 6px; font-size: 12px; text-decoration: underline; }
+.notice small { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; color: var(--sub); line-height: 1.45; }
+/* 긴 성분명은 줄을 바꿔서 오른쪽 표시(확인 필요 등)가 밀리지 않게 */
+.ings li > span:first-child, .ing-warn { flex: 1; min-width: 0; overflow-wrap: anywhere; word-break: normal; }
+.ings li .chip { flex-shrink: 0; }

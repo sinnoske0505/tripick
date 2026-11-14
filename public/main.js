@@ -640,8 +640,8 @@ function renderWish() {
   const CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
   const exSel = exTax(sumSelYen);
   const notice = exSel >= REFUND_MIN_YEN
-    ? `<div class="notice">면세 환급 대상이에요 · 출국 때 소비세를 돌려받으면 <strong>${won(toWon(exSel))}</strong></div>`
-    : `<div class="notice">세금 제외 <strong>${yen(REFUND_MIN_YEN - exSel)}</strong> 더 사면 면세 환급 대상이에요</div>`;
+    ? `<div class="notice">면세 환급 대상이에요 · 돌려받으면 <strong>${won(toWon(exSel))}</strong><small>한 매장에서 세금 제외 ¥5,000 이상 사고 여권을 보여 주면, 출국할 때 공항 세관 확인 후 돌려받아요</small></div>`
+    : `<div class="notice">세금 제외 <strong>${yen(REFUND_MIN_YEN - exSel)}</strong> 더 사면 면세 환급 대상이에요<small>한 매장에서 세금 제외 ¥5,000 이상 사고 여권을 보여 주면, 출국할 때 공항 세관 확인 후 돌려받아요</small></div>`;
   $('#wish-body').innerHTML = `<div class="stack">
     ${notice}
     <button class="select-all" id="sel-all"><span class="check ${allOn ? 'on' : ''}">${CHECK}</span>전체 선택 (${sel.length}/${list.length})</button>
@@ -649,18 +649,22 @@ function renderWish() {
       <div class="pitem">
         <button class="check ${x.checked !== false ? 'on' : ''}" data-check="${x.id}" aria-label="${esc(x.name)} 선택">${CHECK}</button>
         ${thumb(x.img)}
-        <button class="open" data-open="${x.id}">
-          <span class="nm">${esc(x.name)}</span>
-          <span class="row2"><span class="tg ${x.type}">${x.type === 'store' ? '매장' : '온라인몰'} · ${yen(x.yen)}</span><span class="w">${won(x.won * q(x))}</span></span>
-        </button>
-        <div class="qty" aria-label="${esc(x.name)} 수량">
-          <button data-minus="${x.id}" aria-label="수량 줄이기">−</button><span>${q(x)}</span><button data-add="${x.id}" aria-label="수량 늘리기">+</button>
+        <div class="wbody">
+          <button class="open" data-open="${x.id}">
+            <span class="nm">${esc(x.name)}</span>
+            <span class="row2"><span class="tg ${x.type}">${x.type === 'store' ? '매장' : '온라인몰'} · ${yen(x.yen)}</span><span class="w">${won(x.won * q(x))}</span></span>
+          </button>
+          <div class="row3">
+            <div class="qty" aria-label="${esc(x.name)} 수량">
+              <button data-minus="${x.id}" aria-label="수량 줄이기">−</button><span>${q(x)}</span><button data-add="${x.id}" aria-label="수량 늘리기">+</button>
+            </div>
+            <button class="del" data-del="${x.id}" aria-label="${esc(x.name)} 찜 해제">삭제</button>
+          </div>
         </div>
-        <button class="del" data-del="${x.id}" aria-label="${esc(x.name)} 찜 해제">✕</button>
       </div>`).join('')}</div>
     <div class="total">
       <div class="row"><span class="lbl">엔화 (세금 포함)</span><span class="w small">${yen(sumSelYen)}</span></div>
-      <div class="row"><span class="lbl">면세 환급 받으면</span><span class="w small">${exSel >= REFUND_MIN_YEN ? won(toWon(exSel)) : '아직 대상 아님'}</span></div>
+      <div class="row"><span class="lbl">면세 환급 예상액 (참고)</span><span class="w small">${exSel >= REFUND_MIN_YEN ? won(toWon(exSel)) : '아직 대상 아님'}</span></div>
       <div class="row"><span class="lbl">찜 전체 ${list.length}종 합계</span><span class="w small">${won(sumAll)}</span></div>
       <div class="row big"><span class="card-title">선택한 ${sel.length}종 ${cntSel}개 합계</span><span class="w">${won(sumSel)}</span></div>
       ${budget ? `<div class="budget-bar" aria-hidden="true"><span class="${max && sumSel > max ? 'over' : ''}" style="width:${max ? pct : 100}%"></span></div>
