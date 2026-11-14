@@ -28,6 +28,8 @@ body, .p-name, .nm, .bar-title, .sheet h2, .sub { word-break: keep-all; overflow
   padding: calc(env(safe-area-inset-top) + 14px) 20px calc(env(safe-area-inset-bottom) + 28px);
   transition: transform .32s cubic-bezier(.2,.8,.2,1), border-radius .32s; z-index: 2; }
 .screen.active { display: flex; }
+/* 내용이 길어져도 카드가 눌려 찌그러지지 않게 (스크롤로 내려가게) */
+.screen > * { flex-shrink: 0; }
 .screen.scroll { overflow-y: auto; }
 
 /* 글자 크기 (요청한 표 기준) */
