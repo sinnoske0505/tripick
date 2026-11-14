@@ -391,7 +391,7 @@ function renderResult() {
       <div class="photo" id="p-photo" role="img" aria-label="공식 온라인몰 제품 사진"></div>
       <div>
         <div class="meta-line">${esc(p.brand)} · ${esc(p.cat)} · ${esc(p.vol)}</div>
-        <div class="name-row"><h1 class="p-name">${esc(p.name)}</h1><span class="w">${won(s ? s.won : p.won)}</span></div>
+        <h1 class="p-name">${esc(p.name)}</h1><div class="p-price">${won(s ? s.won : p.won)}</div>
         <p class="p-site">온라인몰 표기: ${esc(p.nameSite)}</p>
       </div>
       <section class="card"><p class="desc-label">제품 소개</p><ul class="summary loading" id="p-summary"><li>.</li><li>.</li><li>.</li></ul></section>
@@ -627,10 +627,12 @@ function renderWish() {
       <button class="btn primary" data-shoot="product">제품 찍기</button>`;
     return;
   }
+  const q = (x) => Math.max(1, x.qty || 1);
   const sel = list.filter((x) => x.checked !== false);
-  const sumSel = sel.reduce((a, x) => a + x.won, 0);
-  const sumSelYen = sel.reduce((a, x) => a + x.yen, 0);
-  const sumAll = list.reduce((a, x) => a + x.won, 0);
+  const sumSel = sel.reduce((a, x) => a + x.won * q(x), 0);
+  const sumSelYen = sel.reduce((a, x) => a + x.yen * q(x), 0);
+  const sumAll = list.reduce((a, x) => a + x.won * q(x), 0);
+  const cntSel = sel.reduce((a, x) => a + q(x), 0);
   const max = budgetMax();
   const budget = load('profile', {}).budget;
   const pct = max ? Math.min(100, Math.round((sumSel / max) * 100)) : 0;
@@ -649,15 +651,18 @@ function renderWish() {
         ${thumb(x.img)}
         <button class="open" data-open="${x.id}">
           <span class="nm">${esc(x.name)}</span>
-          <span class="row2"><span class="tg ${x.type}">${x.type === 'store' ? '매장' : '온라인몰'} · ${yen(x.yen)}</span><span class="w">${won(x.won)}</span></span>
+          <span class="row2"><span class="tg ${x.type}">${x.type === 'store' ? '매장' : '온라인몰'} · ${yen(x.yen)}</span><span class="w">${won(x.won * q(x))}</span></span>
         </button>
+        <div class="qty" aria-label="${esc(x.name)} 수량">
+          <button data-minus="${x.id}" aria-label="수량 줄이기">−</button><span>${q(x)}</span><button data-add="${x.id}" aria-label="수량 늘리기">+</button>
+        </div>
         <button class="del" data-del="${x.id}" aria-label="${esc(x.name)} 찜 해제">✕</button>
       </div>`).join('')}</div>
     <div class="total">
       <div class="row"><span class="lbl">엔화 (세금 포함)</span><span class="w small">${yen(sumSelYen)}</span></div>
       <div class="row"><span class="lbl">면세 환급 받으면</span><span class="w small">${exSel >= REFUND_MIN_YEN ? won(toWon(exSel)) : '아직 대상 아님'}</span></div>
-      <div class="row"><span class="lbl">찜 전체 ${list.length}개 합계</span><span class="w small">${won(sumAll)}</span></div>
-      <div class="row big"><span class="card-title">선택한 ${sel.length}개 합계</span><span class="w">${won(sumSel)}</span></div>
+      <div class="row"><span class="lbl">찜 전체 ${list.length}종 합계</span><span class="w small">${won(sumAll)}</span></div>
+      <div class="row big"><span class="card-title">선택한 ${sel.length}종 ${cntSel}개 합계</span><span class="w">${won(sumSel)}</span></div>
       ${budget ? `<div class="budget-bar" aria-hidden="true"><span class="${max && sumSel > max ? 'over' : ''}" style="width:${max ? pct : 100}%"></span></div>
         <span class="lbl">${max ? (sumSel > max ? `예산(${BUDGET_LABEL[budget]})보다 ${won(sumSel - max)} 많아요` : `예산(${BUDGET_LABEL[budget]})까지 ${won(max - sumSel)} 남았어요`) : `예산 ${BUDGET_LABEL[budget]}`}</span>` : ''}
     </div>
@@ -669,11 +674,35 @@ function renderWish() {
     let l = load('wish', []);
     if (e.target.closest('#sel-all')) { l = l.map((x) => ({ ...x, checked: !allOn })); save('wish', l); renderWish(); }
     else if (c) { l = l.map((x) => (x.id === Number(c.dataset.check) ? { ...x, checked: x.checked === false } : x)); save('wish', l); renderWish(); }
-    else if (d) { save('wish', l.filter((x) => x.id !== Number(d.dataset.del))); renderWish(); }
+    else if (d) { confirmRemove(Number(d.dataset.del)); }
+    else if (e.target.closest('[data-add]')) {
+      const id = Number(e.target.closest('[data-add]').dataset.add);
+      save('wish', l.map((x) => (x.id === id ? { ...x, qty: Math.min(99, q(x) + 1) } : x))); renderWish();
+    } else if (e.target.closest('[data-minus]')) {
+      const id = Number(e.target.closest('[data-minus]').dataset.minus);
+      const it = l.find((x) => x.id === id);
+      if (it && q(it) <= 1) confirmRemove(id);
+      else { save('wish', l.map((x) => (x.id === id ? { ...x, qty: q(x) - 1 } : x))); renderWish(); }
+    }
     else if (o) {
       const saved = l.find((x) => x.id === Number(o.dataset.open));
       openById(o.dataset.open, saved && saved.type === 'store' ? { yen: saved.yen, won: saved.won } : null);
     }
+  };
+}
+
+// 수량 1개에서 −를 누르거나 ✕를 누르면 삭제할지 먼저 묻는다
+function confirmRemove(id) {
+  const it = load('wish', []).find((x) => x.id === id);
+  if (!it) return;
+  openSheet(`<h2>찜 목록에서 삭제할까요?</h2>
+    <p class="sub">${esc(it.name)}</p>
+    <div class="btn-row"><button class="btn outline" data-close>취소</button><button class="btn primary" id="rm-yes">삭제하기</button></div>`);
+  $('#rm-yes').onclick = () => {
+    save('wish', load('wish', []).filter((x) => x.id !== id));
+    closeAll();
+    renderWish();
+    toast('삭제했어요');
   };
 }
 
@@ -777,7 +806,7 @@ function renderHome() {
   $('#wish-count').textContent = n;
   $('#wish-count').classList.toggle('zero', !n);
   const recent = load('history', []).slice(0, 4);
-  $('#recent-all').hidden = !recent.length;
+  $('#recent-head').hidden = !recent.length;
   $('#recent-body').innerHTML = recent.length
     ? `<div class="pgrid">${recent.map(gridCell).join('')}</div>`
     : `<section class="card"><p class="desc-label">이렇게 찍어 보세요</p><ol class="tips">

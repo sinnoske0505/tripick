@@ -20,6 +20,8 @@
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; background: var(--milk); }
 button, input { font-family: inherit; color: inherit; font-size: inherit; }
+/* 한국어는 단어 중간에서 줄이 바뀌지 않게 (띄어쓰기 기준으로만 줄바꿈) */
+body, .p-name, .nm, .bar-title, .sheet h2, .sub { word-break: keep-all; overflow-wrap: break-word; }
 #app { position: relative; max-width: 480px; height: 100dvh; margin: 0 auto; overflow: hidden; background: var(--milk); }
 
 .screen { position: absolute; inset: 0; display: none; flex-direction: column; gap: 16px; background: var(--bg);
@@ -137,6 +139,7 @@ button, input { font-family: inherit; color: inherit; font-size: inherit; }
 .meta-line { font-size: 13px; color: var(--sub); }
 .name-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
 .p-name { margin: 4px 0 0; font-size: 20px; font-weight: 700; line-height: 1.4; letter-spacing: -0.3px; }
+.p-price { margin-top: 6px; font-size: 22px; font-weight: 800; color: var(--primary-hover); }
 .name-row .w { font-size: 20px; font-weight: 800; white-space: nowrap; margin-top: 4px; color: var(--primary-hover); }
 .p-site { margin: 4px 0 0; font-size: 13px; color: var(--sub); }
 .summary { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -288,3 +291,10 @@ button, input { font-family: inherit; color: inherit; font-size: inherit; }
 .oy-row b { white-space: nowrap; }
 .oy .small { font-size: 13px; color: var(--sub); }
 .oy a { color: inherit; text-decoration: underline; }
+
+/* 찜 수량 */
+.pitem { flex-wrap: wrap; }
+.qty { display: flex; align-items: center; border: 1.5px solid var(--milk); border-radius: 8px; overflow: hidden; margin-left: auto; }
+.qty button { width: 34px; height: 32px; border: none; background: var(--secondary); color: var(--ink); font-size: 18px; font-weight: 700; cursor: pointer; padding: 0; }
+.qty button:active { background: var(--primary-hover); }
+.qty span { min-width: 34px; text-align: center; font-size: 15px; font-weight: 700; }
