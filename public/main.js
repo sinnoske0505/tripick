@@ -61,15 +61,23 @@ function openDrawer() {
   const p = load('profile', {});
   $('#drawer-name').textContent = p.name || '여행자';
   $('#drawer-avatar').textContent = (p.name || 'T').slice(0, 1);
-  $('#drawer-meta').textContent = [p.skin, p.color].filter(Boolean).join(' · ');
+  $('#drawer-meta').textContent = [p.skin && p.skin + ' 피부', p.budget && '예산 ' + BUDGET_LABEL[p.budget]].filter(Boolean).join(' · ');
+  const cur = ($$('.screen.active')[0] || {}).id?.slice(2);
+  $$('.drawer-item').forEach((b) => b.classList.toggle('on', b.dataset.nav === cur || (b.dataset.nav === 'settings' && cur === 'profile')));
+  clearTimeout(drawerTimer);
   $('#drawer').hidden = false;
+  requestAnimationFrame(() => requestAnimationFrame(() => $('#app').classList.add('menu-open')));
 }
+let drawerTimer;
 function openSheet(html) {
   $('#sheet-body').innerHTML = html;
   $('#sheet').hidden = false;
 }
 function closeAll() {
-  $('#drawer').hidden = true;
+  if ($('#app').classList.contains('menu-open')) {
+    $('#app').classList.remove('menu-open');
+    drawerTimer = setTimeout(() => { $('#drawer').hidden = true; }, 330);
+  } else $('#drawer').hidden = true;
   $('#sheet').hidden = true;
   if (window.speechSynthesis) speechSynthesis.cancel();
 }
@@ -284,7 +292,7 @@ function ingredientList(ings, cautions) {
     const chip = it.unsure ? `<span class="chip unsure">${it.unsure === '추정' ? '표준명 추정' : '확인 필요'}</span>`
       : it.role ? `<span class="chip">${esc(it.role)}</span>` : '';
     const name = warn.has(it.name)
-      ? `<button class="ing-warn" data-why="${esc(it.name)}">${esc(it.name)} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg></button>`
+      ? `<button class="ing-warn" data-why="${esc(it.name)}"><span aria-hidden="true">⚠</span>${esc(it.name)}<span class="warn-label">주의</span></button>`
       : `<span>${esc(it.name)}</span>`;
     html += `<li>${name}${chip}</li>`;
   });
@@ -368,15 +376,21 @@ function renderResult() {
          매장 가격표 찍기</button>`;
   const wished = load('wish', []).some((x) => x.id === p.id);
   const oyBlock = oyCard(p, s);
+  const ICON = (d) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
   $('#result-body').innerHTML = `
     <div class="stack">
       <div class="photo" id="p-photo" role="img" aria-label="공식 온라인몰 제품 사진"></div>
       <div>
         <div class="meta-line">${esc(p.brand)} · ${esc(p.cat)} · ${esc(p.vol)}</div>
-        <h1 class="p-name">${esc(p.name)}</h1>
+        <div class="name-row"><h1 class="p-name">${esc(p.name)}</h1><span class="w">${won(s ? s.won : p.won)}</span></div>
         <p class="p-site">온라인몰 표기: ${esc(p.nameSite)}</p>
       </div>
-      <section class="card"><ul class="summary loading" id="p-summary"><li>.</li><li>.</li><li>.</li></ul></section>
+      <section class="card"><p class="desc-label">제품 소개</p><ul class="summary loading" id="p-summary"><li>.</li><li>.</li><li>.</li></ul></section>
+      <div class="quick">
+        <button id="q-ings">${ICON('<path d="M9 3h6M10 3v6L5 19a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7.5 14h9"/>')}전성분</button>
+        <button id="ask-btn">${ICON('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>')}직원에게 묻기</button>
+        <button id="share-btn">${ICON('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>')}공유</button>
+      </div>
       <section class="price">${priceBlock}</section>
       ${oyBlock}
       <div id="p-caution"></div>
@@ -391,8 +405,7 @@ function renderResult() {
           <p class="source">표준 성분명 기준 · 출처: <a href="${esc(p.url)}" target="_blank" rel="noopener">돈키호테 공식 해외 온라인몰</a></p>
         </div>
       </section>
-      <button class="ask-btn" id="ask-btn"><span>일본인 직원에게 물어보기</span><span aria-hidden="true">↗</span></button>
-      <div class="btn-row">
+      <div class="result-foot btn-row">
         <button class="btn ${wished ? 'soft' : 'primary'}" id="wish-btn">${wished ? '♥ 찜했어요' : '♡ 찜하기'}</button>
         <button class="btn outline" data-go="wish" style="flex:0 0 128px">찜한 목록</button>
       </div>
@@ -405,6 +418,13 @@ function renderResult() {
   };
   $('#wish-btn').onclick = toggleWish;
   $('#ask-btn').onclick = openAsk;
+  $('#share-btn').onclick = shareProduct;
+  $('#q-ings').onclick = () => {
+    const acc = $('#ing-acc');
+    acc.classList.add('open');
+    $('#ing-toggle').setAttribute('aria-expanded', 'true');
+    acc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   $('#ing-list').onclick = onWhy;
   if (state.insight) renderInsight();
 }
@@ -422,7 +442,7 @@ function renderInsight() {
   $('#ing-list').innerHTML = ingredientList(p.ingredients, cautions);
   const prof = load('profile', {});
   $('#p-caution').innerHTML = cautions.length
-    ? `<div class="caution-banner"><span aria-hidden="true">⚠️</span><span><strong>${cautions.length}개 성분</strong>을 ${esc(prof.skin || '내')} 피부 기준으로 살펴보면 좋아요. 전성분에서 <strong>빨간 글씨</strong>를 눌러 이유를 확인하세요.</span></div>`
+    ? `<div class="caution-banner"><span aria-hidden="true">⚠️</span><span><strong>${cautions.length}개 성분</strong>을 ${esc(prof.skin || '내')} 피부 기준으로 살펴보면 좋아요. 전성분에서 <strong>⚠ 주의</strong> 표시를 눌러 이유를 확인하세요.</span></div>`
     : '';
 }
 
@@ -432,7 +452,7 @@ function onWhy(e) {
   const c = (state.insight?.cautions || []).find((x) => x.name === b.dataset.why);
   if (!c) return;
   const prof = load('profile', {});
-  openSheet(`<h2 style="color:var(--danger)">${esc(c.name)}</h2>
+  openSheet(`<h2 style="color:var(--primary-hover)">⚠ ${esc(c.name)}</h2>
     <p class="sub">${esc(prof.skin || '내')} 피부${prof.pregnant ? ' · 임신 중' : ''}${prof.allergy ? ' · 알레르기 있음' : ''} 기준</p>
     <p style="font-size:15px;line-height:1.6;margin:0 0 14px">${esc(c.reason)}</p>
     <p class="disclaimer">일반적으로 알려진 정보를 바탕으로 한 참고용 안내예요. 피부 상태에 따라 다를 수 있고, 의학적 진단이 아니에요. 걱정되면 전문가와 상의해 주세요.</p>
@@ -440,7 +460,7 @@ function onWhy(e) {
 }
 
 /* ---------- 공유: 링크 복사 ---------- */
-$('#share-btn').addEventListener('click', async () => {
+async function shareProduct() {
   const p = state.product;
   if (!p) return;
   const url = `${location.origin}/?p=${p.id}`;
@@ -451,7 +471,7 @@ $('#share-btn').addEventListener('click', async () => {
     if (navigator.share) navigator.share({ title: p.name, url }).catch(() => {});
     else prompt('이 링크를 복사하세요', url);
   }
-});
+}
 
 /* ---------- 일본인 직원에게 물어보기 ---------- */
 const QUESTIONS = [
@@ -465,7 +485,7 @@ const QUESTIONS = [
 ];
 function openAsk() {
   openSheet(`<h2>일본인 직원에게 물어보기</h2><p class="sub">질문을 고르면 큰 일본어 문장으로 보여드려요. 화면을 직원에게 보여주세요.</p>
-    <div class="sheet-list">${QUESTIONS.map((q, i) => `<button class="sheet-opt" data-q="${i}">${esc(q.ko)}</button>`).join('')}</div>`);
+    <div class="sheet-list">${QUESTIONS.map((q, i) => `<button class="sheet-opt" data-q="${i}">${esc(q.ko)}<span class="chev" aria-hidden="true">›</span></button>`).join('')}</div>`);
   $('#sheet-body').onclick = (e) => {
     const b = e.target.closest('[data-q]');
     if (b) showQuestion(QUESTIONS[Number(b.dataset.q)]);
@@ -526,6 +546,26 @@ function thumb(url) {
   return `<span class="thumb" ${url ? `style="background-image:url('${esc(url)}')"` : ''}></span>`;
 }
 
+// 2열 그리드 한 칸 (최근 본 제품). + 버튼 = 찜 (기존 찜 기능 그대로)
+function gridCell(x) {
+  const on = load('wish', []).some((w) => w.id === x.id);
+  return `<div class="pcell">
+    <button class="open" data-open="${x.id}"><span class="pimg" ${x.img ? `style="background-image:url('${esc(x.img)}')"` : ''}></span><span class="nm">${esc(x.name)}</span></button>
+    <div class="foot"><span class="w">${won(x.won)}</span><button class="plus ${on ? 'on' : ''}" data-plus="${x.id}" aria-label="${on ? '찜 해제' : '찜하기'}">${on ? '♥' : '+'}</button></div>
+  </div>`;
+}
+function wishFromList(id) {
+  let list = load('wish', []);
+  if (list.some((w) => w.id === id)) { list = list.filter((w) => w.id !== id); toast('찜을 해제했어요'); }
+  else {
+    const h = load('history', []).find((x) => x.id === id);
+    if (!h) return;
+    list.unshift({ id: h.id, name: h.name, yen: h.yen, won: h.won, type: 'online', img: h.img || '', checked: true });
+    toast('찜했어요');
+  }
+  save('wish', list);
+}
+
 function dayLabel(t) {
   const d = new Date(t);
   const today = new Date();
@@ -536,25 +576,32 @@ function dayLabel(t) {
 function renderHistory() {
   const list = load('history', []);
   if (!list.length) {
-    $('#history-body').innerHTML = `<p class="empty">아직 조회한 제품이 없어요.<br>제품을 찍으면 여기에 차곡차곡 쌓여요.</p>
+    $('#history-body').innerHTML = `<p class="empty">아직 본 제품이 없어요.<br>제품을 찍으면 여기에 차곡차곡 쌓여요.</p>
       <button class="btn primary" data-shoot="product">제품 찍기</button>`;
     return;
   }
   let html = '<div class="stack">';
   let day = '';
+  let open = false;
   list.forEach((x) => {
     const d = dayLabel(x.at);
-    if (d !== day) { day = d; html += `<div class="date-label">${d}</div>`; }
-    html += `<div class="pitem">${thumb(x.img)}
-      <button class="open" data-open="${x.id}"><span class="nm">${esc(x.name)}</span>
-        <span class="row2"><span class="sub">${yen(x.yen)}</span><span class="w">${won(x.won)}</span></span></button></div>`;
+    if (d !== day) {
+      if (open) html += '</div>';
+      day = d;
+      html += `<div class="date-label">${d}</div><div class="pgrid">`;
+      open = true;
+    }
+    html += gridCell(x);
   });
-  html += `<button class="btn ghost" id="clear-history">조회 기록 지우기</button></div>`;
+  if (open) html += '</div>';
+  html += `<button class="btn ghost" id="clear-history">기록 지우기</button></div>`;
   $('#history-body').innerHTML = html;
   $('#history-body').onclick = (e) => {
     const o = e.target.closest('[data-open]');
+    const plus = e.target.closest('[data-plus]');
+    if (plus) { wishFromList(Number(plus.dataset.plus)); renderHistory(); return; }
     if (o) openById(o.dataset.open);
-    if (e.target.closest('#clear-history')) { save('history', []); renderHistory(); toast('조회 기록을 지웠어요'); }
+    if (e.target.closest('#clear-history')) { save('history', []); renderHistory(); toast('기록을 지웠어요'); }
   };
 }
 
@@ -580,7 +627,12 @@ function renderWish() {
   const pct = max ? Math.min(100, Math.round((sumSel / max) * 100)) : 0;
   const allOn = sel.length === list.length;
   const CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
+  const exSel = exTax(sumSelYen);
+  const notice = exSel >= REFUND_MIN_YEN
+    ? `<div class="notice">면세 환급 대상이에요 · 출국 때 소비세를 돌려받으면 <strong>${won(toWon(exSel))}</strong></div>`
+    : `<div class="notice">세금 제외 <strong>${yen(REFUND_MIN_YEN - exSel)}</strong> 더 사면 면세 환급 대상이에요</div>`;
   $('#wish-body').innerHTML = `<div class="stack">
+    ${notice}
     <button class="select-all" id="sel-all"><span class="check ${allOn ? 'on' : ''}">${CHECK}</span>전체 선택 (${sel.length}/${list.length})</button>
     <div class="plist">${list.map((x) => `
       <div class="pitem">
@@ -593,11 +645,10 @@ function renderWish() {
         <button class="del" data-del="${x.id}" aria-label="${esc(x.name)} 찜 해제">✕</button>
       </div>`).join('')}</div>
     <div class="total">
-      <div class="row"><span class="lbl">선택한 ${sel.length}개 합계</span><span class="w">${won(sumSel)}</span></div>
       <div class="row"><span class="lbl">엔화 (세금 포함)</span><span class="w small">${yen(sumSelYen)}</span></div>
-      <div class="row"><span class="lbl">면세 환급 받으면</span><span class="w small">${exTax(sumSelYen) >= REFUND_MIN_YEN ? won(toWon(exTax(sumSelYen))) : '아직 대상 아님'}</span></div>
-      <span class="lbl">${exTax(sumSelYen) >= REFUND_MIN_YEN ? '세금 제외 ¥5,000 이상이라 출국 때 소비세를 돌려받을 수 있어요' : `세금 제외 ${yen(REFUND_MIN_YEN - exTax(sumSelYen))} 더 사면 환급 대상이에요`}</span>
+      <div class="row"><span class="lbl">면세 환급 받으면</span><span class="w small">${exSel >= REFUND_MIN_YEN ? won(toWon(exSel)) : '아직 대상 아님'}</span></div>
       <div class="row"><span class="lbl">찜 전체 ${list.length}개 합계</span><span class="w small">${won(sumAll)}</span></div>
+      <div class="row big"><span class="card-title">선택한 ${sel.length}개 합계</span><span class="w">${won(sumSel)}</span></div>
       ${budget ? `<div class="budget-bar" aria-hidden="true"><span class="${max && sumSel > max ? 'over' : ''}" style="width:${max ? pct : 100}%"></span></div>
         <span class="lbl">${max ? (sumSel > max ? `예산(${BUDGET_LABEL[budget]})보다 ${won(sumSel - max)} 많아요` : `예산(${BUDGET_LABEL[budget]})까지 ${won(max - sumSel)} 남았어요`) : `예산 ${BUDGET_LABEL[budget]}`}</span>` : ''}
     </div>
@@ -675,10 +726,10 @@ function renderPrice(r) {
   const ok = r.status === 'ok';
   const confirm = r.status === 'confirm';
   const badge = ok
-    ? `<span class="badge" style="background:var(--ok)">✓</span><h1>가격표를 확인했어요</h1><p>찍은 제품과 같은 제품의 가격표예요</p>`
+    ? `<span class="badge ok">✓</span><h1>가격표를 확인했어요</h1><p>찍은 제품과 같은 제품의 가격표예요</p>`
     : confirm
-      ? `<span class="badge" style="background:var(--warn)">?</span><h1>가격이 예상과 많이 달라요</h1><p>온라인몰 ${yen(r.onlineYen)}과 차이가 커요. 가격표가 맞는지 확인해 주세요.</p>`
-      : `<span class="badge" style="background:var(--warn)">!</span><h1>${esc(r.reason)}</h1><p>찍은 제품의 가격표를 다시 찍어주세요.</p>`;
+      ? `<span class="badge warn">?</span><h1>가격이 예상과 많이 달라요</h1><p>온라인몰 ${yen(r.onlineYen)}과 차이가 커요. 가격표가 맞는지 확인해 주세요.</p>`
+      : `<span class="badge warn">!</span><h1>${esc(r.reason)}</h1><p>찍은 제품의 가격표를 다시 찍어주세요.</p>`;
   const diff = r.yen != null ? r.yen - r.onlineYen : null;
   const priceCard = r.yen != null && (ok || confirm)
     ? `<section class="price"><span class="tag store">매장 가격</span>
@@ -688,7 +739,7 @@ function renderPrice(r) {
   const compare = !ok && !confirm
     ? `<section class="card"><div class="sub">찍은 제품</div><strong>${esc(p.name)}</strong>
         <hr style="border:none;border-top:1px solid var(--line);margin:10px 0">
-        <div class="sub">가격표에서 읽은 제품</div><strong style="color:var(--warn-fg)">${esc(r.tag.name || '읽지 못했어요')}${r.tag.volume ? ' · ' + esc(r.tag.volume) : ''}</strong></section>`
+        <div class="sub">가격표에서 읽은 제품</div><strong style="color:var(--primary-hover)">${esc(r.tag.name || '읽지 못했어요')}${r.tag.volume ? ' · ' + esc(r.tag.volume) : ''}</strong></section>`
     : '';
   const checks = `<ul class="card checks">${r.checks.map((c) => `
       <li><span class="mark ${c.ok ? 'ok' : 'bad'}">${c.ok ? '✓' : '✕'}</span>
@@ -713,8 +764,24 @@ function renderHome() {
   if (!state.info) return;
   $('#rate-val').textContent = Number(state.info.rate100).toLocaleString('ko-KR');
   $('#rate-date').textContent = state.info.rateDate;
-  $('#wish-count').textContent = load('wish', []).length;
+  const n = load('wish', []).length;
+  $('#wish-count').textContent = n;
+  $('#wish-count').classList.toggle('zero', !n);
+  const recent = load('history', []).slice(0, 4);
+  $('#recent-all').hidden = !recent.length;
+  $('#recent-body').innerHTML = recent.length
+    ? `<div class="pgrid">${recent.map(gridCell).join('')}</div>`
+    : `<section class="card"><p class="desc-label">이렇게 찍어 보세요</p><ol class="tips">
+        <li><span class="n">1</span><span>제품 앞면의 글자가 잘 보이게 찍어요</span></li>
+        <li><span class="n">2</span><span>제품명·원화 가격·전성분을 한국어로 보여줘요</span></li>
+        <li><span class="n">3</span><span>매장 가격표도 찍으면 실제 가격으로 바꿔줘요</span></li></ol></section>`;
 }
+$('#recent-body').addEventListener('click', (e) => {
+  const plus = e.target.closest('[data-plus]');
+  if (plus) { wishFromList(Number(plus.dataset.plus)); renderHome(); return; }
+  const o = e.target.closest('[data-open]');
+  if (o) openById(o.dataset.open);
+});
 
 /* ---------- 시작 ---------- */
 async function boot() {
