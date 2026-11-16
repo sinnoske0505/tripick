@@ -58,10 +58,10 @@ function toast(msg) {
 
 /* ---------- 메뉴·아래 창 ---------- */
 function openDrawer() {
-  const p = load('profile', {});
-  $('#drawer-name').textContent = p.name || '여행자';
-  $('#drawer-avatar').textContent = (p.name || 'T').slice(0, 1);
-  $('#drawer-meta').textContent = [p.skin && p.skin + ' 피부', p.budget && '예산 ' + BUDGET_LABEL[p.budget]].filter(Boolean).join(' · ');
+  const p = getProfile();
+  $('#drawer-name').textContent = '여행자';
+  $('#drawer-avatar').textContent = 'T';
+  $('#drawer-meta').textContent = [p.skins.length && p.skins.join('·') + ' 피부', p.colors.join('·')].filter(Boolean).join(' · ');
   const cur = ($$('.screen.active')[0] || {}).id?.slice(2);
   $$('.drawer-item').forEach((b) => b.classList.toggle('on', b.dataset.nav === cur || (b.dataset.nav === 'settings' && cur === 'profile')));
   clearTimeout(drawerTimer);
@@ -123,53 +123,100 @@ async function api(path, body) {
   return data;
 }
 
-/* ---------- 내 정보 (첫 화면 · 설정) ---------- */
+/* ---------- 내 정보 (첫 화면 · 설정): 전부 선택 사항 ---------- */
 const BUDGET_LABEL = { '0-100000': '0원 ~ 10만원', '100000-200000': '10만 ~ 20만원', '200000-300000': '20만 ~ 30만원', '300000-': '30만원 ~' };
+// 예전 형식(피부 타입 1개, 알레르기 메모)도 새 형식으로 읽는다
+function getProfile() {
+  const p = load('profile', {}) || {};
+  return {
+    ...p,
+    skins: p.skins || (p.skin ? [p.skin] : []),
+    colors: p.colors || (p.color ? [p.color] : []),
+    allergens: p.allergens || [],
+    allergyText: p.allergyText ?? p.allergyNote ?? '',
+    allergyTerms: p.allergyTerms || [],
+  };
+}
 function openProfile(editing) {
-  const p = load('profile', {});
+  const p = getProfile();
   const f = $('#profile-form');
-  f.name.value = p.name || '';
-  f.allergyNote.value = p.allergyNote || '';
+  f.allergyText.value = p.allergyText;
   $$('#profile-form .choices').forEach((box) => {
-    const v = box.dataset.name === 'allergy' ? (p.allergy ? 'yes' : p.allergy === false ? 'no' : '')
-      : box.dataset.name === 'pregnant' ? (p.pregnant ? 'yes' : p.pregnant === false ? 'no' : '')
-        : p[box.dataset.name] || '';
-    box.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+    const vals = p[box.dataset.name] || [];
+    box.querySelectorAll('button').forEach((b) => b.classList.toggle('on', vals.includes(b.dataset.v)));
   });
-  f.allergyNote.hidden = !p.allergy;
   $('#profile-back').hidden = !editing;
   $('#profile-logo').hidden = editing;
-  $('#profile-title').innerHTML = editing ? '내 정보 수정' : '반가워요!<br>나에게 맞게 알려드릴게요';
-  $('#profile-desc').textContent = editing ? '바꾼 내용은 성분 안내와 찜 목록 예산에 바로 반영돼요.' : '한 번만 입력하면 다음부터는 바로 시작해요. 이 정보는 내 휴대폰에만 저장돼요.';
+  $('#profile-skip').hidden = editing;
+  $('#profile-title').textContent = editing ? '내 피부 정보' : '나에게 맞게 알려드릴게요';
   $('#profile-save').textContent = editing ? '저장하기' : '시작하기';
   show('profile');
 }
 $$('#profile-form .choices').forEach((box) => box.addEventListener('click', (e) => {
   const b = e.target.closest('button');
-  if (!b) return;
-  box.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-  if (box.dataset.name === 'allergy') $('#profile-form').allergyNote.hidden = b.dataset.v !== 'yes';
+  if (b) b.classList.toggle('on');
 }));
-$('#profile-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const f = e.target;
-  const pick = (n) => (f.querySelector(`[data-name="${n}"] .on`) || {}).dataset?.v || '';
-  const prof = {
-    name: f.name.value.trim(), skin: pick('skin'), color: pick('color'),
-    allergy: pick('allergy') === 'yes', allergyNote: pick('allergy') === 'yes' ? f.allergyNote.value.trim() : '',
-    pregnant: pick('pregnant') === 'yes', budget: pick('budget'),
-  };
-  if (!prof.skin) { toast('피부 타입을 골라주세요'); return; }
-  if (!prof.budget) { toast('쇼핑 예산을 골라주세요'); return; }
-  const before = JSON.stringify(load('profile', {}));
-  save('profile', prof);
-  if (before !== JSON.stringify(prof)) save('insight', {}); // 정보가 바뀌면 성분 안내를 새로 받는다
-  toast('저장했어요');
+function afterProfile() {
   show('home');
   // 공유 링크로 처음 들어온 사람은 정보 입력 후 그 제품으로 바로 간다
   const shared = params.get('p');
   if (shared && !state.sharedOpened) { state.sharedOpened = true; openById(shared); }
+}
+$('#profile-skip').onclick = () => { save('profile', { ...getProfile(), done: true }); afterProfile(); };
+$('#profile-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const picks = (n) => [...f.querySelectorAll(`[data-name="${n}"] .on`)].map((b) => b.dataset.v);
+  const old = getProfile();
+  const text = f.allergyText.value.trim();
+  const prof = { ...old, done: true, skins: picks('skins'), colors: picks('colors'), allergens: picks('allergens'), allergyText: text };
+  delete prof.skin; delete prof.color; delete prof.allergy; delete prof.allergyNote; delete prof.pregnant; delete prof.name;
+  if (text !== old.allergyText || !old.allergyTerms.length) prof.allergyTerms = text ? await allergyTerms(text) : [];
+  save('profile', prof);
+  toast('저장했어요');
+  afterProfile();
 });
+
+// 직접 입력한 문장("티트리 알러지")을 전성분 표기로 풀어 둔다. 실패해도 입력한 낱말로 찾는다.
+function plainWords(text) {
+  return text.split(/[,，、/·\s]+/).map((w) => w.replace(/(알러지|알레르기|있어요|있음|성분|오일|추출물)$/g, '')).filter((w) => w.length >= 2);
+}
+async function allergyTerms(text) {
+  const words = plainWords(text);
+  try {
+    const r = await api('/api/allergy', { text });
+    return [...new Set([...(r.terms || []), ...words])].slice(0, 20);
+  } catch { return words; }
+}
+
+// 등록한 성분과 전성분을 글자로만 대조한다 (AI 추측 없음)
+const ALLERGEN_RULES = {
+  향료: (n) => /향료|리날룰|리모넨|시트로넬올|제라니올|쿠마린|유제놀|헥실신남알|시트랄|파네솔|신남알|아밀신남|하이드록시시트로넬알|벤질살리실레이트|벤질벤조에이트|벤질신나메이트|참나무이끼|나무이끼/.test(n),
+  방부제: (n) => /파라벤|아이소싸이아졸리논|이소치아졸리논|페녹시에탄올|벤질알코올|소듐벤조에이트|포타슘소르베이트|소르빅애씨드|벤조익애씨드|클로페네신|디엠디엠하이단토인|이미다졸리디닐우레아|다이아졸리디닐우레아|데하이드로아세틱애씨드|소듐데하이드로아세테이트|클로로자이레놀|트리클로산/.test(n),
+  오일: (n) => /오일/.test(n) && !/미네랄오일|실리콘|하이드로제네이티드|피이지|PEG/.test(n),
+  알코올: (n) => /^(에탄올|알코올|변성알코올)$|^알코올\s*\(|^변성\s*알코올/.test(n.replace(/\s+/g, '')),
+};
+const ALLERGEN_LABEL = { 향료: '향료', 방부제: '방부제', 오일: '에센셜오일·식물 오일', 알코올: '알코올' };
+function allergyHits(ings) {
+  const p = getProfile();
+  const terms = p.allergyTerms.filter((t) => t.length >= 2);
+  const hits = new Map();
+  ings.forEach((it) => {
+    const n = String(it.name || '');
+    const labels = p.allergens.filter((k) => ALLERGEN_RULES[k]?.(n)).map((k) => ALLERGEN_LABEL[k]);
+    if (terms.some((t) => n.includes(t))) labels.push(p.allergyText);
+    if (labels.length) hits.set(n, [...new Set(labels)]);
+  });
+  return { registered: p.allergens.length > 0 || terms.length > 0, hits };
+}
+function allergyAlert(ings) {
+  const { registered, hits } = allergyHits(ings);
+  if (!registered) return '';
+  if (!hits.size) return `<div class="allergy-alert">내가 등록한 성분은 들어 있지 않아요<small>전성분 표기와 글자로 대조한 결과예요</small></div>`;
+  const labels = [...new Set([...hits.values()].flat())].map((l) => `‘${esc(l)}’`).join(', ');
+  return `<div class="allergy-alert hit">⚠ 내가 등록한 ${labels} 관련 성분이 들어 있어요: <strong>${[...hits.keys()].map(esc).join(', ')}</strong>
+    <small>전성분 표기와 글자로 대조한 관련 성분 확인용이에요</small></div>`;
+}
 
 /* ---------- 분석 중 화면 (멘트·순서는 그대로, 디자인만 변경) ---------- */
 const STEPS = {
@@ -265,45 +312,42 @@ function officialPhoto(el, p) {
   next();
 }
 
-function profileFlags() {
-  const p = load('profile', {});
-  return { skin: p.skin || '', allergy: !!p.allergy, allergyNote: p.allergyNote || '', pregnant: !!p.pregnant };
-}
-
 async function loadInsight(p) {
-  const prof = profileFlags();
-  const key = `${p.id}|${prof.skin}|${prof.allergy}|${prof.allergyNote}|${prof.pregnant}`;
+  const key = `v2|${p.id}`;
   const cache = load('insight', {});
   if (cache[key]) { state.insight = cache[key]; renderInsight(); return; }
   try {
-    const r = await api('/api/insight', { productId: p.id, profile: prof });
+    const r = await api('/api/insight', { productId: p.id });
     if (state.product?.id !== p.id) return;
     state.insight = r;
     const c = load('insight', {});
     c[key] = r;
     const keys = Object.keys(c);
-    if (keys.length > 60) delete c[keys[0]];
+    if (keys.length > 80) delete c[keys[0]];
     save('insight', c);
     renderInsight();
   } catch {
-    if (state.product?.id !== p.id) return;
-    state.insight = { summary: [], cautions: [], failed: true };
-    renderInsight();
+    if (state.product?.id === p.id) state.insight = { features: [] };
   }
 }
 
-function ingredientList(ings, cautions) {
-  const warn = new Map((cautions || []).map((c) => [c.name, c.reason]));
+function ingredientList(ings) {
+  const { hits } = allergyHits(ings);
+  const row = (it, mine) => {
+    const chip = it.unsure ? `<span class="chip unsure">${it.unsure === '추정' ? '표준명 추정' : '확인 필요'}</span>`
+      : it.role ? `<span class="chip">${esc(it.role)}</span>` : '';
+    return `<li class="${mine ? 'mine' : ''}"><span>${mine ? '⚠ ' : ''}${esc(it.name)}</span>${chip}</li>`;
+  };
   let html = '';
+  if (hits.size) {
+    html += `<li class="group mine">내가 등록한 성분 관련</li>`;
+    ings.filter((it) => hits.has(it.name)).forEach((it) => { html += row(it, true); });
+    html += `<li class="group">전체 (표기 순서)</li>`;
+  }
   let group = null;
   ings.forEach((it) => {
     if (it.group && it.group !== group) { group = it.group; html += `<li class="group">${esc(group)}</li>`; }
-    const chip = it.unsure ? `<span class="chip unsure">${it.unsure === '추정' ? '표준명 추정' : '확인 필요'}</span>`
-      : it.role ? `<span class="chip">${esc(it.role)}</span>` : '';
-    const name = warn.has(it.name)
-      ? `<button class="ing-warn" data-why="${esc(it.name)}"><span aria-hidden="true">⚠</span>${esc(it.name)}<span class="warn-label">주의</span></button>`
-      : `<span>${esc(it.name)}</span>`;
-    html += `<li>${name}${chip}</li>`;
+    html += row(it, hits.has(it.name));
   });
   return html;
 }
@@ -368,6 +412,7 @@ function renderResult() {
         ${hasJa(p.nameSite) ? `<p class="p-ja" lang="ja">${esc(p.nameSite)}</p>` : ''}
         <div class="p-price">${s ? '<span class="tag">매장 가격</span>' : ''}<span class="won">${won(s ? s.won : p.won)}</span><span class="yen">${yen(s ? s.yen : p.yen)}</span></div>
       </div>
+      ${allergyAlert(p.ingredients)}
       <section class="card" id="p-features" hidden><p class="desc-label">핵심 특징</p><ul class="summary" id="p-summary"></ul></section>
       ${oyCard(p, s)}
       <section class="card acc ings" id="ing-acc">
@@ -376,7 +421,7 @@ function renderResult() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         <div class="acc-body">
-          <ol id="ing-list">${ingredientList(p.ingredients, [])}</ol>
+          <ol id="ing-list">${ingredientList(p.ingredients)}</ol>
           <p class="source">출처: <a href="${esc(p.url)}" target="_blank" rel="noopener">돈키호테 공식 온라인몰</a></p>
         </div>
       </section>
@@ -402,26 +447,12 @@ function renderResult() {
   if (state.insight) renderInsight();
 }
 
-// 핵심 특징: 쓸 내용이 없으면 칸 자체를 숨긴다. 피부 타입별 '주의 성분' 표시는 쓰지 않는다.
 function renderInsight() {
   const ins = state.insight;
   if (!ins || !state.product || !$('#p-features')) return;
-  const items = (ins.summary || []).filter(Boolean).slice(0, 3);
+  const items = (ins.features || []).slice(0, 3);
   $('#p-features').hidden = !items.length;
-  $('#p-summary').innerHTML = items.map((t) => `<li>${esc(t)}</li>`).join('');
-}
-
-function onWhy(e) {
-  const b = e.target.closest('[data-why]');
-  if (!b) return;
-  const c = (state.insight?.cautions || []).find((x) => x.name === b.dataset.why);
-  if (!c) return;
-  const prof = load('profile', {});
-  openSheet(`<h2 style="color:var(--primary-hover)">⚠ ${esc(c.name)}</h2>
-    <p class="sub">${esc(prof.skin || '내')} 피부${prof.pregnant ? ' · 임신 중' : ''}${prof.allergy ? ' · 알레르기 있음' : ''} 기준</p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 14px">${esc(c.reason)}</p>
-    <p class="disclaimer">일반적으로 알려진 정보를 바탕으로 한 참고용 안내예요. 피부 상태에 따라 다를 수 있고, 의학적 진단이 아니에요. 걱정되면 전문가와 상의해 주세요.</p>
-    <button class="btn outline" data-close style="margin-top:16px">닫기</button>`);
+  $('#p-summary').innerHTML = items.map((f) => `<li><b>${esc(f.key)}</b> — ${esc(f.text)}</li>`).join('');
 }
 
 /* ---------- 공유: 링크 복사 ---------- */
@@ -830,7 +861,7 @@ async function boot() {
   const wait = Math.max(0, 1200 - (Date.now() - started)); // 시작 화면은 최소 1.2초
   setTimeout(() => {
     const prof = load('profile', null);
-    if (!prof || !prof.skin) { openProfile(false); return; }
+    if (!prof || !(prof.done || prof.skin)) { openProfile(false); return; }
     show('home');
     const shared = params.get('p');
     if (shared) { state.sharedOpened = true; openById(shared); }
@@ -848,13 +879,8 @@ async function demoApi(path, body) {
   if (path.startsWith('/api/info?product=')) return { product: pick(path.split('=')[1]) };
   if (path === '/api/info') return { rate100, rateDate: demoProducts.meta.rateDate, productCount: demoProducts.products.length };
   if (path === '/api/identify') return { found: true, product: pick(30), candidates: [], readText: '', nameGuess: '' };
-  if (path === '/api/insight') {
-    const p = pick(body.productId);
-    return {
-      summary: ['로열젤리 추출물과 히알루론산이 들어간 시트 마스크예요.', '한 봉지에 4회분이 들어 있어 여행 중에 쓰기 좋아요.', '세안 후 스킨으로 정돈한 다음 붙이는 제품이에요.'],
-      cautions: body.profile.skin === '민감성' && p ? p.ingredients.filter((i) => /에탄올|향료/.test(i.name)).map((i) => ({ name: i.name, reason: '민감한 피부에서는 따가움이나 붉어짐을 느낄 수 있다고 알려져 있어요.' })) : [],
-    };
-  }
+  if (path === '/api/insight') return { features: [{ key: '자외선 차단', text: 'SPF40 PA+++' }] };
+  if (path === '/api/allergy') return { terms: ['티트리잎오일', '티트리'] };
   if (path === '/api/pricetag') {
     const fail = Math.random() < 0.5;
     const checks = (oks) => ['제품 일치', '용량 일치', '가격 범위', '숫자 읽기', '세금 구분'].map((label, i) => ({

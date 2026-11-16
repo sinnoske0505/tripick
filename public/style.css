@@ -330,3 +330,14 @@ body, .p-name, .nm, .bar-title, .sheet h2, .sub { word-break: keep-all; overflow
 .acts .btn svg { flex-shrink: 0; }
 .result-foot .btn { min-height: 54px; }
 .ings .source { font-size: 14px; }
+
+/* 처음 설정: 보조 설명은 라벨 옆에 작게 */
+.field-label span { font-weight: 400; margin-left: 6px; }
+.field-label { font-size: 16px; color: var(--ink); }
+/* 내 알레르기 알림: 핑크는 여기에만 */
+.allergy-alert { border-radius: 16px; padding: 14px 16px; font-size: 16px; line-height: 1.5; background: var(--surface); box-shadow: var(--shadow); }
+.allergy-alert.hit { background: #FDF0F4; border: 1.5px solid var(--accent); }
+.allergy-alert.hit strong { color: var(--accent); }
+.allergy-alert small { display: block; margin-top: 4px; font-size: 14px; color: var(--sub); }
+.ings li.mine > span:first-child { color: var(--accent); font-weight: 700; }
+.ings .group.mine { color: var(--accent); }

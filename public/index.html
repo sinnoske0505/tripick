@@ -36,37 +36,28 @@
       <span class="spacer" aria-hidden="true"></span>
     </header>
     <div class="page-copy">
-      <h1 id="profile-title">반가워요!<br>나에게 맞게 알려드릴게요</h1>
-      <p id="profile-desc">한 번만 입력하면 다음부터는 바로 시작해요. 이 정보는 내 휴대폰에만 저장돼요.</p>
+      <h1 id="profile-title">나에게 맞게 알려드릴게요</h1>
+      <p id="profile-desc">모두 선택 사항이에요. 이 정보는 내 휴대폰에만 저장돼요.</p>
     </div>
     <form id="profile-form" class="stack" novalidate>
-      <label class="field"><span class="field-label">이름</span>
-        <input name="name" type="text" maxlength="20" placeholder="이름 또는 별명" autocomplete="given-name"></label>
-      <fieldset class="field"><legend class="field-label">피부 타입</legend>
-        <div class="choices" data-name="skin">
+      <fieldset class="field"><legend class="field-label">피부 타입 <span>여러 개 고를 수 있어요</span></legend>
+        <div class="choices" data-name="skins">
           <button type="button" data-v="건성">건성</button><button type="button" data-v="지성">지성</button>
           <button type="button" data-v="수부지">수부지</button><button type="button" data-v="민감성">민감성</button>
         </div></fieldset>
-      <fieldset class="field"><legend class="field-label">퍼스널 컬러</legend>
-        <div class="choices" data-name="color">
+      <fieldset class="field"><legend class="field-label">퍼스널 컬러 <span>여러 개 고를 수 있어요</span></legend>
+        <div class="choices" data-name="colors">
           <button type="button" data-v="봄웜">봄웜</button><button type="button" data-v="여름쿨">여름쿨</button>
           <button type="button" data-v="가을웜">가을웜</button><button type="button" data-v="겨울쿨">겨울쿨</button>
         </div></fieldset>
-      <fieldset class="field"><legend class="field-label">알레르기</legend>
-        <div class="choices two" data-name="allergy">
-          <button type="button" data-v="no">없어요</button><button type="button" data-v="yes">있어요</button>
+      <fieldset class="field"><legend class="field-label">피하고 싶은 성분 <span>제품에 들어 있으면 알려드려요</span></legend>
+        <div class="choices two" data-name="allergens">
+          <button type="button" data-v="향료">향료</button><button type="button" data-v="방부제">방부제</button>
+          <button type="button" data-v="오일">에센셜오일·식물 오일</button><button type="button" data-v="알코올">알코올(에탄올)</button>
         </div>
-        <input name="allergyNote" type="text" maxlength="60" placeholder="예: 향료, 알코올, 견과류 오일" hidden></fieldset>
-      <fieldset class="field"><legend class="field-label">임신 중이신가요?</legend>
-        <div class="choices two" data-name="pregnant">
-          <button type="button" data-v="no">아니요</button><button type="button" data-v="yes">네</button>
-        </div></fieldset>
-      <fieldset class="field"><legend class="field-label">쇼핑 예산 (원화)</legend>
-        <div class="choices two" data-name="budget">
-          <button type="button" data-v="0-100000">0원 ~ 10만원</button><button type="button" data-v="100000-200000">10만 ~ 20만원</button>
-          <button type="button" data-v="200000-300000">20만 ~ 30만원</button><button type="button" data-v="300000-">30만원 ~</button>
-        </div></fieldset>
+        <input name="allergyText" type="text" maxlength="60" placeholder="직접 입력 (예: 티트리, 라벤더)"></fieldset>
       <button class="btn primary" type="submit" id="profile-save">시작하기</button>
+      <button class="btn ghost" type="button" id="profile-skip">건너뛰기</button>
     </form>
   </section>
 
