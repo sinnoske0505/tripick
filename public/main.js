@@ -308,54 +308,36 @@ function ingredientList(ings, cautions) {
   return html;
 }
 
-// 한국 올리브영 온라인몰 가격과 비교 (시트 '올리브영 비교' 탭 기준)
+// 한국 올리브영 온라인몰 가격과 비교 (시트 '올리브영 비교'·'브랜드 입점' 탭 기준)
 function oyCard(p, s) {
   const o = p.oy;
   if (!o) return '';
-  const date = o.checked ? `${esc(o.checked)} 확인` : '';
   if (o.onlyDonki) {
     return `<section class="oy only"><span class="oy-badge">돈키호테에만 있어요</span>
-      <p>${o.brandLevel ? '이 브랜드는 한국 올리브영 온라인몰에 입점해 있지 않아요.' : '한국 올리브영 온라인몰에서는 찾지 못한 제품이에요.'}</p><span class="small">${date}</span></section>`;
+      <p>${o.brandLevel ? '한국 올리브영 온라인몰에 없는 브랜드예요.' : '한국 올리브영 온라인몰에 없는 제품이에요.'}</p></section>`;
   }
-  if (o.brandIn) {
-    return `<section class="oy only"><span class="oy-badge">올리브영 입점 브랜드</span>
-      <p>한국 올리브영에도 이 브랜드가 있어요. 같은 제품 가격은 아직 확인 중이에요.</p><span class="small">${date}</span></section>`;
-  }
+  if (o.brandIn) return '';
   const here = s ? s.won : p.won;
-  const hereYen = s ? s.yen : p.yen;
-  const refund = toWon(exTax(hereYen));
-  const link = o.link ? ` · <a href="${esc(o.link)}" target="_blank" rel="noopener">올리브영에서 보기</a>` : '';
+  const label = s ? '이 매장' : '돈키호테';
   if (o.differentSize) {
     const a = parseVol(o.vol), b = parseVol(p.vol);
     if (!a || !b) return '';
-    const per = (won, v) => Math.round(won / v.n * 100);
+    const per = (w, v) => Math.round(w / v.n * 100);
     const oyPer = per(o.price, a), herePer = per(here, b);
     const diff = oyPer - herePer;
-    const head = diff > 0 ? `<strong class="oy-win">100${b.u}당 돈키호테가 ${won(diff)} 저렴해요</strong>`
-      : diff < 0 ? `<strong class="oy-lose">100${b.u}당 올리브영이 ${won(-diff)} 저렴해요</strong>` : `<strong>용량당 가격이 같아요</strong>`;
-    return `<section class="oy">
-      <span class="oy-badge">한국 올리브영과 비교 · 용량 다름</span>
-      ${head}
-      <div class="oy-row"><span>올리브영 ${esc(o.vol)} ${won(o.price)}</span><b>100${a.u}당 ${won(oyPer)}</b></div>
-      <div class="oy-row"><span>${s ? '이 매장' : '돈키호테'} ${esc(p.vol)} ${won(here)}</span><b>100${b.u}당 ${won(herePer)}</b></div>
-      <span class="small">${date}${link} · 용량이 달라 용량당 가격으로 비교했어요${a.u !== b.u ? ' (g·ml 단위 차이는 무시한 참고값)' : ''}</span>
-    </section>`;
+    const head = diff > 0 ? `100${b.u}당 돈키호테가 ${won(diff)} 저렴해요`
+      : diff < 0 ? `100${b.u}당 올리브영이 ${won(-diff)} 저렴해요` : '용량당 가격이 같아요';
+    return `<section class="oy"><span class="oy-badge">한국 올리브영과 비교</span>
+      <p class="oy-head">${head}</p>
+      <div class="oy-row"><span>올리브영 ${esc(o.vol)}</span><b>${won(o.price)} (100${a.u}당 ${won(oyPer)})</b></div>
+      <div class="oy-row"><span>${label} ${esc(p.vol)}</span><b>${won(here)} (100${b.u}당 ${won(herePer)})</b></div></section>`;
   }
   const diff = o.price - here;
-  const head = diff > 0
-    ? `<strong class="oy-win">돈키호테가 ${won(diff)} 저렴해요</strong>`
-    : diff < 0 ? `<strong class="oy-lose">올리브영이 ${won(-diff)} 저렴해요</strong>`
-    : `<strong>가격이 같아요</strong>`;
-  const refundLine = o.price - refund > 0 && diff <= 0
-    ? `<span class="small">면세 환급까지 받으면 돈키호테가 ${won(o.price - refund)} 저렴해요</span>` : '';
-  return `<section class="oy">
-      <span class="oy-badge">한국 올리브영과 비교</span>
-      ${head}
-      <div class="oy-row"><span>올리브영 온라인몰${o.startFrom ? ' (옵션별 시작가)' : ''}</span><b>${won(o.price)}</b></div>
-      <div class="oy-row"><span>${s ? '이 매장' : '돈키호테 온라인몰'} (세금 포함)</span><b>${won(here)}</b></div>
-      ${refundLine}
-      <span class="small">${date}${link} · 세일에 따라 달라질 수 있어요</span>
-    </section>`;
+  const head = diff > 0 ? `돈키호테가 ${won(diff)} 저렴해요` : diff < 0 ? `올리브영이 ${won(-diff)} 저렴해요` : '가격이 같아요';
+  return `<section class="oy"><span class="oy-badge">한국 올리브영과 비교</span>
+      <p class="oy-head">${head}</p>
+      <div class="oy-row"><span>올리브영${o.startFrom ? ' (시작가)' : ''}</span><b>${won(o.price)}</b></div>
+      <div class="oy-row"><span>${label}</span><b>${won(here)}</b></div></section>`;
 }
 
 // "150ml", "169g", "30g(4회분)" → { n: 150, u: 'ml' }
@@ -366,44 +348,28 @@ function parseVol(v) {
   return n > 0 ? { n, u: /g|ｇ/.test(m[2]) ? 'g' : 'ml' } : null;
 }
 
+// 일본어(가나·한자)가 들어 있을 때만 원문 이름으로 보여준다
+const hasJa = (t) => /[぀-ヿ一-鿿ｦ-ﾟ]/.test(String(t || ''));
+
 function renderResult() {
   const p = state.product;
   const s = state.store;
-  const rate = state.info?.rate100 || '-';
-  const priceBlock = s
-    ? `<span class="tag store">매장 가격</span>
-       <div><span class="won">${won(s.won)}</span><span class="yen">${yen(s.yen)} 세금 포함</span></div>
-       <div class="refund"><span>면세 환급 받으면</span><strong>${won(toWon(exTax(s.yen)))}</strong><span class="yen">${yen(exTax(s.yen))}</span></div>
-       <span class="small">온라인몰 ${yen(p.yen)} · 100엔 = ${rate}원 · 환급은 세금 제외 ¥5,000 이상 구매 시</span>
-       <button class="btn" data-shoot="tag">가격표 다시 찍기</button>`
-    : `<span class="tag">온라인몰 기준 가격</span>
-       <div><span class="won">${won(p.won)}</span><span class="yen">${yen(p.yen)} 세금 포함</span></div>
-       <div class="refund"><span>면세 환급 받으면</span><strong>${won(toWon(exTax(p.yen)))}</strong><span class="yen">${yen(exTax(p.yen))}</span></div>
-       <span class="small">매장 가격은 다를 수 있어요 · 100엔 = ${rate}원 · 환급은 세금 제외 ¥5,000 이상 구매 시</span>
-       <button class="btn" data-shoot="tag">
-         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
-         매장 가격표 찍기</button>`;
   const wished = load('wish', []).some((x) => x.id === p.id);
-  const oyBlock = oyCard(p, s);
-  const ICON = (d) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const ICON = (d) => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const CAM = ICON('<path d="M20 7h-3.2l-1.6-2.4A1 1 0 0 0 14.4 4H9.6a1 1 0 0 0-.8.6L7.2 7H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/><circle cx="12" cy="13" r="4"/>');
+  const ASK = ICON('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>');
+  const TAG = ICON('<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>');
+  const SHARE = ICON('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>');
   $('#result-body').innerHTML = `
-    <div class="stack">
-      <div class="photo" id="p-photo" role="img" aria-label="공식 온라인몰 제품 사진"></div>
+    <div class="stack" style="gap:24px">
+      <div class="photo" id="p-photo" role="img" aria-label="제품 사진"></div>
       <div>
-        <div class="meta-line">${esc(p.brand)} · ${esc(p.cat)} · ${esc(p.vol)}</div>
-        <h1 class="p-name">${esc(p.name)}</h1><div class="p-price">${won(s ? s.won : p.won)}</div>
-        <p class="p-site">온라인몰 표기: ${esc(p.nameSite)}</p>
+        <h1 class="p-name">${esc(p.name)}</h1>
+        ${hasJa(p.nameSite) ? `<p class="p-ja" lang="ja">${esc(p.nameSite)}</p>` : ''}
+        <div class="p-price">${s ? '<span class="tag">매장 가격</span>' : ''}<span class="won">${won(s ? s.won : p.won)}</span><span class="yen">${yen(s ? s.yen : p.yen)}</span></div>
       </div>
-      <section class="card"><p class="desc-label">제품 소개</p><ul class="summary loading" id="p-summary"><li>.</li><li>.</li><li>.</li></ul></section>
-      <div class="quick">
-        <button id="q-ings">${ICON('<path d="M9 3h6M10 3v6L5 19a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7.5 14h9"/>')}전성분</button>
-        <button id="ask-btn">${ICON('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>')}직원에게 묻기</button>
-        <button id="share-btn">${ICON('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>')}공유</button>
-      </div>
-      <section class="price">${priceBlock}</section>
-      ${oyBlock}
-      <div id="p-caution"></div>
-      ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}
+      <section class="card" id="p-features" hidden><p class="desc-label">핵심 특징</p><ul class="summary" id="p-summary"></ul></section>
+      ${oyCard(p, s)}
       <section class="card acc ings" id="ing-acc">
         <button class="acc-head" id="ing-toggle" aria-expanded="false">
           <span class="card-title">전성분 <span>${p.ingredients.length}개</span></span>
@@ -411,12 +377,17 @@ function renderResult() {
         </button>
         <div class="acc-body">
           <ol id="ing-list">${ingredientList(p.ingredients, [])}</ol>
-          <p class="source">표준 성분명 기준 · 출처: <a href="${esc(p.url)}" target="_blank" rel="noopener">돈키호테 공식 해외 온라인몰</a></p>
+          <p class="source">출처: <a href="${esc(p.url)}" target="_blank" rel="noopener">돈키호테 공식 온라인몰</a></p>
         </div>
       </section>
-      <div class="result-foot btn-row">
+      <div class="acts">
+        <button class="btn" data-shoot="product">${CAM}다른 제품 찍기</button>
+        <button class="btn" id="ask-btn">${ASK}직원에게 묻기</button>
+        <button class="btn" data-shoot="tag">${TAG}${s ? '가격표 다시 찍기' : '매장 가격표 찍기'}</button>
+        <button class="btn" id="share-btn">${SHARE}공유</button>
+      </div>
+      <div class="result-foot">
         <button class="btn ${wished ? 'soft' : 'primary'}" id="wish-btn">${wished ? '♥ 찜했어요' : '♡ 찜하기'}</button>
-        <button class="btn outline" data-go="wish" style="flex:0 0 128px">찜한 목록</button>
       </div>
     </div>`;
   officialPhoto($('#p-photo'), p);
@@ -428,31 +399,16 @@ function renderResult() {
   $('#wish-btn').onclick = toggleWish;
   $('#ask-btn').onclick = openAsk;
   $('#share-btn').onclick = shareProduct;
-  $('#q-ings').onclick = () => {
-    const acc = $('#ing-acc');
-    acc.classList.add('open');
-    $('#ing-toggle').setAttribute('aria-expanded', 'true');
-    acc.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-  $('#ing-list').onclick = onWhy;
   if (state.insight) renderInsight();
 }
 
+// 핵심 특징: 쓸 내용이 없으면 칸 자체를 숨긴다. 피부 타입별 '주의 성분' 표시는 쓰지 않는다.
 function renderInsight() {
   const ins = state.insight;
-  const p = state.product;
-  if (!ins || !p || !$('#p-summary')) return;
-  const ul = $('#p-summary');
-  ul.classList.remove('loading');
-  ul.innerHTML = ins.summary?.length
-    ? ins.summary.map((t) => `<li>${esc(t)}</li>`).join('')
-    : `<li>${ins.failed ? '소개를 불러오지 못했어요.' : esc(p.name)}</li>`;
-  const cautions = ins.cautions || [];
-  $('#ing-list').innerHTML = ingredientList(p.ingredients, cautions);
-  const prof = load('profile', {});
-  $('#p-caution').innerHTML = cautions.length
-    ? `<div class="caution-banner"><span aria-hidden="true">⚠️</span><span><strong>${cautions.length}개 성분</strong>을 ${esc(prof.skin || '내')} 피부 기준으로 살펴보면 좋아요. 전성분에서 <strong>⚠ 주의</strong> 표시를 눌러 이유를 확인하세요.</span></div>`
-    : '';
+  if (!ins || !state.product || !$('#p-features')) return;
+  const items = (ins.summary || []).filter(Boolean).slice(0, 3);
+  $('#p-features').hidden = !items.length;
+  $('#p-summary').innerHTML = items.map((t) => `<li>${esc(t)}</li>`).join('');
 }
 
 function onWhy(e) {
