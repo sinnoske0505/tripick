@@ -341,3 +341,47 @@ body, .p-name, .nm, .bar-title, .sheet h2, .sub { word-break: keep-all; overflow
 .allergy-alert small { display: block; margin-top: 4px; font-size: 14px; color: var(--sub); }
 .ings li.mine > span:first-child { color: var(--accent); font-weight: 700; }
 .ings .group.mine { color: var(--accent); }
+
+/* 못 찾았을 때 */
+.sec-title { margin: 0 0 10px; font-size: 18px; font-weight: 600; }
+.pitem.cand { width: 100%; border: none; background: none; text-align: left; cursor: pointer; color: var(--ink); }
+.pitem.cand .wbody { gap: 4px; }
+.pitem.cand .chev { font-size: 22px; color: var(--sub); }
+.search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.search-row input { flex: 1; min-width: 0; height: 52px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--surface); padding: 0 14px; font-size: 16px; outline: none; }
+.search-row input:focus { border-color: var(--primary); }
+.search-row .btn { width: auto; flex: 0 0 76px; }
+.hint { font-size: 14px; }
+
+/* 홈: 환율을 크게 */
+.rate-line { flex-direction: column; align-items: flex-start; gap: 2px; padding: 16px 18px; border-radius: 20px; }
+.rate-line .rate-label { font-size: 14px; font-weight: 600; color: var(--sub); }
+.rate-line .rate { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+.rate-line .sub { font-size: 14px; }
+
+/* 직원에게 묻기 */
+.ask-prod { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 12px; font-size: 14px; font-weight: 600; text-align: left; }
+.ask-prod .thumb { width: 48px; height: 48px; border-radius: 8px; background: var(--surface) center/contain no-repeat; flex-shrink: 0; }
+.say { margin: 8px 0 0; font-size: 18px; font-weight: 700; }
+#sheet-body > .btn { margin-top: 10px; }
+.point { margin-top: 16px; }
+.point-head { margin: 0 0 10px; font-size: 18px; font-weight: 700; }
+.point-head span { display: block; font-size: 14px; font-weight: 400; color: var(--sub); margin-top: 2px; }
+.point-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.point-btn { min-height: 72px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left; cursor: pointer; color: var(--ink); }
+.point-btn b { font-size: 17px; line-height: 1.35; }
+.point-btn span { font-size: 14px; color: var(--sub); }
+.point-btn.on { border-color: var(--primary); background: var(--primary); color: var(--on-primary); }
+.point-btn.on span { color: var(--on-primary); }
+
+/* 가격표 → 찜 */
+.tag-name { margin: 0; font-size: 16px; font-weight: 600; }
+.yen-edit { display: flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); border-radius: 12px; padding: 0 14px; height: 64px; background: var(--surface); }
+.yen-edit:focus-within { border-color: var(--primary); }
+.yen-edit span { font-size: 26px; font-weight: 800; }
+.yen-edit input { flex: 1; min-width: 0; border: none; outline: none; background: none; font-size: 28px; font-weight: 800; }
+.tag-won { margin: 0; font-size: 16px; }
+.tag-won strong { font-size: 24px; }
+.tag-hint { margin: 0; font-size: 14px; color: var(--sub); }
+.budget-btn { align-self: flex-start; font-size: 14px; color: var(--ink); text-decoration: underline; }
+.yen-edit input::-webkit-inner-spin-button, .yen-edit input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; } .yen-edit input { -moz-appearance: textfield; }

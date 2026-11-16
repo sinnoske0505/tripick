@@ -171,10 +171,20 @@ $('#profile-form').addEventListener('submit', async (e) => {
   const text = f.allergyText.value.trim();
   const prof = { ...old, done: true, skins: picks('skins'), colors: picks('colors'), allergens: picks('allergens'), allergyText: text };
   delete prof.skin; delete prof.color; delete prof.allergy; delete prof.allergyNote; delete prof.pregnant; delete prof.name;
-  if (text !== old.allergyText || !old.allergyTerms.length) prof.allergyTerms = text ? await allergyTerms(text) : [];
+  const changed = text !== old.allergyText || !old.allergyTerms.length;
+  if (changed) prof.allergyTerms = text ? plainWords(text) : [];
   save('profile', prof);
   toast('저장했어요');
   afterProfile();
+  // 직접 입력한 문장은 뒤에서 전성분 표기로 풀어 둔다 (기다리지 않음)
+  if (changed && text) {
+    const terms = await allergyTerms(text);
+    const now = getProfile();
+    if (now.allergyText === text) {
+      save('profile', { ...now, allergyTerms: terms });
+      if (state.product && $('#s-result').classList.contains('active')) renderResult();
+    }
+  }
 });
 
 // 직접 입력한 문장("티트리 알러지")을 전성분 표기로 풀어 둔다. 실패해도 입력한 낱말로 찾는다.
@@ -470,17 +480,19 @@ async function shareProduct() {
 }
 
 /* ---------- 일본인 직원에게 물어보기 ---------- */
+// 직원에게 묻기: 길게 설명해야 하는 질문은 빼고 4개만. 답은 직원이 손가락으로 고른다.
 const QUESTIONS = [
-  { ko: '이 제품은 어디에 있나요?', ja: 'この商品はどこにありますか？' },
-  { ko: '이 제품 재고 있나요?', ja: 'この商品の在庫はありますか？' },
-  { ko: '테스터를 써봐도 되나요?', ja: 'テスターを試してもいいですか？' },
-  { ko: '다른 색상(호수)도 있나요?', ja: 'ほかの色もありますか？' },
-  { ko: '이 가격은 세금 포함인가요?', ja: 'この値段は税込ですか？' },
-  { ko: '면세 받을 수 있나요?', ja: '免税できますか？' },
-  { ko: '민감한 피부에도 괜찮나요?', ja: '敏感肌でも使えますか？' },
+  { ko: '이 제품은 어디에 있나요?', ja: 'この商品はどこにありますか？', say: '고노 쇼힌와 도코니 아리마스카?',
+    answers: [['あちらです', '저쪽이에요'], ['この階です', '이 층에 있어요'], ['別の階です', '다른 층에 있어요'], ['売り切れです', '다 팔렸어요']] },
+  { ko: '이 제품 재고 있나요?', ja: 'この商品の在庫はありますか？', say: '고노 쇼힌노 자이코와 아리마스카?',
+    answers: [['はい、あります', '네, 있어요'], ['確認します', '확인해 볼게요'], ['在庫はありません', '재고가 없어요']] },
+  { ko: '테스터를 써 봐도 되나요?', ja: 'テスターを試してもいいですか？', say: '테스타오 타메시테모 이이데스카?',
+    answers: [['はい、どうぞ', '네, 써 보세요'], ['テスターはありません', '테스터가 없어요'], ['使えません', '쓸 수 없어요']] },
+  { ko: '면세 되나요?', ja: '免税できますか？', say: '멘제 데키마스카?',
+    answers: [['はい、できます', '네, 돼요'], ['レジでパスポートを見せてください', '계산대에서 여권을 보여 주세요'], ['税抜5,000円以上で免税です', '세금 빼고 5,000엔 이상이면 돼요'], ['できません', '안 돼요']] },
 ];
 function openAsk() {
-  openSheet(`<h2>일본인 직원에게 물어보기</h2><p class="sub">질문을 고르면 큰 일본어 문장으로 보여드려요. 화면을 직원에게 보여주세요.</p>
+  openSheet(`<h2>직원에게 묻기</h2><p class="sub">질문을 고르면 일본어로 크게 보여드려요</p>
     <div class="sheet-list">${QUESTIONS.map((q, i) => `<button class="sheet-opt" data-q="${i}">${esc(q.ko)}<span class="chev" aria-hidden="true">›</span></button>`).join('')}</div>`);
   $('#sheet-body').onclick = (e) => {
     const b = e.target.closest('[data-q]');
@@ -498,20 +510,28 @@ function speak(text) {
   speechSynthesis.speak(u);
 }
 function showQuestion(q) {
-  // 온라인몰 표기에 일본어·한자가 있을 때만 직원에게 보여준다 (한국어 기계번역 표기는 숨김)
-  const p = state.product && /[\u3040-\u30ff\u4e00-\u9fff]/.test(state.product.nameSite) ? state.product : null;
+  const p = state.product;
+  const jaName = p && hasJa(p.nameSite) ? p.nameSite : '';
+  const img = p && state.imgUrl?.id === p.id ? state.imgUrl.url : '';
   $('#sheet-body').innerHTML = `
     <div class="ja-card">
+      ${p ? `<div class="ask-prod">${img ? `<span class="thumb" style="background-image:url('${esc(img)}')"></span>` : ''}${jaName ? `<span lang="ja">${esc(jaName)}</span>` : ''}</div>` : ''}
       <p class="ja-text" lang="ja">${esc(q.ja)}</p>
-      ${p ? `<p class="ja-prod" lang="ja">${esc(p.nameSite)}</p>` : ''}
+      <p class="say">${esc(q.say)}</p>
       <p class="ko-text">${esc(q.ko)}</p>
     </div>
-    <div class="btn-row">
-      <button class="btn primary" id="speak-btn">🔊 일본어로 듣기</button>
-      <button class="btn outline" id="ask-back" style="flex:0 0 110px">다른 질문</button>
-    </div>`;
-  $('#sheet-body').onclick = null;
-  $('#speak-btn').onclick = () => speak(q.ja + (p ? '。' + p.nameSite : ''));
+    <button class="btn primary" id="speak-btn">🔊 일본어로 듣기</button>
+    <section class="point">
+      <p class="point-head" lang="ja">こちらから指してください<span>직원이 손가락으로 답을 가리켜요</span></p>
+      <div class="point-grid">${q.answers.map(([ja, ko]) => `<button class="point-btn" type="button"><b lang="ja">${esc(ja)}</b><span>${esc(ko)}</span></button>`).join('')}</div>
+    </section>
+    <button class="btn outline" id="ask-back">다른 질문</button>`;
+  $('#sheet-body').onclick = (e) => {
+    const b = e.target.closest('.point-btn');
+    if (!b) return;
+    $$('.point-btn').forEach((x) => x.classList.toggle('on', x === b));
+  };
+  $('#speak-btn').onclick = () => speak(q.ja + (jaName ? '。' + jaName : '') + '。こちらから指してください');
   $('#ask-back').onclick = openAsk;
 }
 
@@ -691,6 +711,7 @@ function renderWish() {
       <div class="row"><span class="lbl">면세 환급 예상액 (참고)</span><span class="w small">${exSel >= REFUND_MIN_YEN ? won(toWon(exSel)) : '아직 대상 아님'}</span></div>
       <div class="row"><span class="lbl">찜 전체 ${list.length}종 합계</span><span class="w small">${won(sumAll)}</span></div>
       <div class="row big"><span class="card-title">선택한 ${sel.length}종 ${cntSel}개 합계</span><span class="w">${won(sumSel)}</span></div>
+      <button class="text-btn budget-btn" id="budget-set">${budget ? '예산 바꾸기' : '+ 쇼핑 예산 정하기'}</button>
       ${budget ? `<div class="budget-bar" aria-hidden="true"><span class="${max && sumSel > max ? 'over' : ''}" style="width:${max ? pct : 100}%"></span></div>
         <span class="lbl">${max ? (sumSel > max ? `예산(${BUDGET_LABEL[budget]})보다 ${won(sumSel - max)} 많아요` : `예산(${BUDGET_LABEL[budget]})까지 ${won(max - sumSel)} 남았어요`) : `예산 ${BUDGET_LABEL[budget]}`}</span>` : ''}
     </div>
@@ -700,6 +721,7 @@ function renderWish() {
     const d = e.target.closest('[data-del]');
     const o = e.target.closest('[data-open]');
     let l = load('wish', []);
+    if (e.target.closest('#budget-set')) { openBudget(); return; }
     if (e.target.closest('#sel-all')) { l = l.map((x) => ({ ...x, checked: !allOn })); save('wish', l); renderWish(); }
     else if (c) { l = l.map((x) => (x.id === Number(c.dataset.check) ? { ...x, checked: x.checked === false } : x)); save('wish', l); renderWish(); }
     else if (d) { confirmRemove(Number(d.dataset.del)); }
@@ -716,6 +738,20 @@ function renderWish() {
       const saved = l.find((x) => x.id === Number(o.dataset.open));
       openById(o.dataset.open, saved && saved.type === 'store' ? { yen: saved.yen, won: saved.won } : null);
     }
+  };
+}
+
+function openBudget() {
+  const cur = getProfile().budget || '';
+  openSheet(`<h2>쇼핑 예산</h2><p class="sub">찜 목록 합계와 비교해 알려드려요</p>
+    <div class="sheet-list">${Object.entries(BUDGET_LABEL).map(([k, v]) => `<button class="sheet-opt" data-b="${k}">${v}${k === cur ? '<span class="chev">✓</span>' : ''}</button>`).join('')}
+    <button class="sheet-opt" data-b="">정하지 않기</button></div>`);
+  $('#sheet-body').onclick = (e) => {
+    const b = e.target.closest('[data-b]');
+    if (!b) return;
+    save('profile', { ...getProfile(), budget: b.dataset.b });
+    closeAll();
+    renderWish();
   };
 }
 
@@ -743,27 +779,41 @@ async function openById(id, store = null) {
   } catch (err) { showError(err); }
 }
 
-/* ---------- 찾지 못했을 때 (혹시 이 제품인가요? 유지) ---------- */
+/* ---------- 찾지 못했을 때: 후보 사진 · 이름으로 찾기 · 구글 검색 ---------- */
+function candList(list) {
+  return `<div class="plist">${list.map((c) => `
+    <button class="pitem cand" data-pick="${c.id}">
+      ${thumb(c.img)}
+      <span class="wbody"><span class="nm">${esc(c.name)}</span><span class="w">${c.yen ? won(toWon(c.yen)) : ''}</span></span>
+      <span aria-hidden="true" class="chev">›</span>
+    </button>`).join('')}</div>`;
+}
 function renderNotFound(r) {
   state.product = null;
   const cands = r.lowConfidenceProduct ? [r.lowConfidenceProduct, ...r.candidates] : r.candidates;
+  const g = r.searchText || r.nameGuess || '';
   $('#result-body').innerHTML = `
-    <div class="stack">
+    <div class="stack" style="gap:24px">
       <div class="photo" style="background-image:url('${state.photo}')" role="img" aria-label="찍은 사진"></div>
-      <div class="verdict">
-        <h1>아직 등록되지 않은 제품이에요</h1>
-        <p>TRIPICK 제품 DB(${state.info?.productCount ?? '-'}개)에서 같은 제품을 찾지 못했어요.</p>
-      </div>
-      <section class="card">
-        <div class="sub">사진에서 읽은 내용</div>
-        <p style="margin:6px 0 0;font-size:16px;font-weight:700">${esc(r.nameGuess || '읽지 못했어요')}</p>
-        ${r.readText ? `<p class="sub" style="margin:4px 0 0">${esc(r.readText)}</p>` : ''}
-      </section>
-      ${cands.length ? `<section class="card"><div class="card-title" style="margin-bottom:4px">혹시 이 제품인가요?</div>
-        ${cands.map((c) => `<button class="btn outline" style="min-height:48px;margin-top:8px;font-size:15px" data-pick="${c.id}">${esc(c.name)}</button>`).join('')}</section>` : ''}
+      <h1 class="p-name">TRIPICK에 아직 등록되지 않은 제품이에요</h1>
+      ${cands.length ? `<section><h2 class="sec-title">혹시 이 제품인가요?</h2>${candList(cands)}</section>` : ''}
+      <section><h2 class="sec-title">이름으로 찾기</h2>
+        <form class="search-row" id="nf-search"><input name="q" type="search" placeholder="브랜드나 제품 이름" value="${esc(r.nameGuess || '')}" aria-label="제품 이름"><button class="btn primary" type="submit">찾기</button></form>
+        <div id="nf-results"></div></section>
+      ${g ? `<a class="btn outline" href="https://www.google.com/search?q=${encodeURIComponent(g)}" target="_blank" rel="noopener">구글에서 이 제품 검색하기 ›</a>` : ''}
       <button class="btn primary" data-shoot="product">다시 찍기</button>
     </div>`;
-  $$('[data-pick]').forEach((b) => (b.onclick = () => openById(b.dataset.pick)));
+  $('#result-body').onclick = (e) => { const b = e.target.closest('[data-pick]'); if (b) openById(b.dataset.pick); };
+  $('#nf-search').onsubmit = async (e) => {
+    e.preventDefault();
+    const q = e.target.q.value.trim();
+    if (!q) return;
+    $('#nf-results').innerHTML = '<p class="hint">찾는 중…</p>';
+    try {
+      const { results } = await api('/api/search?q=' + encodeURIComponent(q));
+      $('#nf-results').innerHTML = results.length ? candList(results) : '<p class="hint">맞는 제품이 없어요</p>';
+    } catch { $('#nf-results').innerHTML = '<p class="hint">검색하지 못했어요</p>'; }
+  };
 }
 
 /* ---------- 2차: 가격표 사진 ---------- */
@@ -792,36 +842,44 @@ function renderPrice(r) {
   const ok = r.status === 'ok';
   const confirm = r.status === 'confirm';
   const badge = ok
-    ? `<span class="badge ok">✓</span><h1>가격표를 확인했어요</h1><p>찍은 제품과 같은 제품의 가격표예요</p>`
+    ? `<span class="badge ok">✓</span><h1>가격표를 확인했어요</h1>`
     : confirm
-      ? `<span class="badge warn">?</span><h1>가격이 예상과 많이 달라요</h1><p>온라인몰 ${yen(r.onlineYen)}과 차이가 커요. 가격표가 맞는지 확인해 주세요.</p>`
-      : `<span class="badge warn">!</span><h1>${esc(r.reason)}</h1><p>찍은 제품의 가격표를 다시 찍어주세요.</p>`;
-  const diff = r.yen != null ? r.yen - r.onlineYen : null;
-  const priceCard = r.yen != null && (ok || confirm)
-    ? `<section class="price"><span class="tag store">매장 가격</span>
-        <div><span class="won">${won(r.won)}</span><span class="yen">${yen(r.yen)} (세금 포함)</span></div>
-        <span class="small">${diff === 0 ? '온라인몰과 같아요' : diff < 0 ? `온라인몰보다 ¥${-diff} 저렴해요` : `온라인몰보다 ¥${diff} 비싸요`} (온라인몰 ${yen(r.onlineYen)})</span></section>`
-    : '';
-  const compare = !ok && !confirm
-    ? `<section class="card"><div class="sub">찍은 제품</div><strong>${esc(p.name)}</strong>
+      ? `<span class="badge warn">?</span><h1>가격이 온라인몰과 많이 달라요</h1><p>숫자가 맞는지 확인하고 필요하면 고쳐 주세요</p>`
+      : `<span class="badge warn">!</span><h1>${esc(r.reason)}</h1><p>찍은 제품의 가격표를 다시 찍어 주세요</p>`;
+  if (!(ok || confirm) || r.yen == null) {
+    $('#price-body').innerHTML = `<div class="stack" style="gap:24px"><div class="verdict">${badge}</div>
+      <section class="card"><div class="sub">찍은 제품</div><strong>${esc(p.name)}</strong>
         <hr style="border:none;border-top:1px solid var(--line);margin:10px 0">
-        <div class="sub">가격표에서 읽은 제품</div><strong style="color:var(--primary-hover)">${esc(r.tag.name || '읽지 못했어요')}${r.tag.volume ? ' · ' + esc(r.tag.volume) : ''}</strong></section>`
-    : '';
-  const checks = `<ul class="card checks">${r.checks.map((c) => `
-      <li><span class="mark ${c.ok ? 'ok' : 'bad'}">${c.ok ? '✓' : '✕'}</span>
-      <span class="label">${esc(c.label)}</span><span class="detail">${esc(c.detail)}</span></li>`).join('')}</ul>`;
-  const buttons = ok || confirm
-    ? `<button class="btn primary" id="use-store">매장 가격으로 바꾸기</button><button class="btn ghost" data-shoot="tag">가격표 다시 찍기</button>`
-    : `<button class="btn primary" data-shoot="tag">가격표 다시 찍기</button><button class="btn ghost" data-go="result">온라인몰 가격 그대로 쓰기</button>`;
-  $('#price-body').innerHTML = `<div class="stack"><div class="verdict">${badge}</div>${priceCard}${compare}${checks}${buttons}</div>`;
-  const use = $('#use-store');
-  if (use) use.onclick = () => {
-    state.store = { yen: r.yen, won: r.won };
-    const list = load('wish', []).map((x) => (x.id === p.id ? { ...x, yen: r.yen, won: r.won, type: 'store' } : x));
+        <div class="sub">가격표에서 읽은 제품</div><strong>${esc(r.tag?.name || '읽지 못했어요')}${r.tag?.volume ? ' · ' + esc(r.tag.volume) : ''}</strong></section>
+      <button class="btn primary" data-shoot="tag">가격표 다시 찍기</button>
+      <button class="btn ghost" data-go="result">돌아가기</button></div>`;
+    return;
+  }
+  $('#price-body').innerHTML = `<div class="stack" style="gap:24px"><div class="verdict">${badge}</div>
+    <section class="price">
+      <p class="tag-name">${esc(p.name)}</p>
+      <label class="yen-edit"><span>¥</span><input id="tag-yen" type="number" inputmode="numeric" min="1" max="999999" value="${r.yen}" aria-label="매장 가격(엔, 세금 포함)"></label>
+      <p class="tag-won">약 <strong id="tag-won">${won(toWon(r.yen))}</strong> · 세금 포함</p>
+      <p class="tag-hint">숫자가 다르면 눌러서 고칠 수 있어요</p>
+    </section>
+    <button class="btn primary" id="tag-save">이 가격으로 찜에 저장</button>
+    <button class="btn outline" id="tag-skip">저장하지 않기</button>
+    <p class="hint">저장하지 않으면 이 가격은 사라지고 온라인몰 가격으로 돌아가요</p></div>`;
+  const inp = $('#tag-yen');
+  const val = () => Math.round(Number(inp.value));
+  inp.oninput = () => { $('#tag-won').textContent = val() > 0 ? won(toWon(val())) : '-'; };
+  $('#tag-skip').onclick = () => { show('result'); };
+  $('#tag-save').onclick = () => {
+    const y = val();
+    if (!(y > 0)) { toast('가격을 입력해 주세요'); return; }
+    state.store = { yen: y, won: toWon(y) };
+    let list = load('wish', []);
+    const item = { id: p.id, name: p.name, yen: y, won: toWon(y), type: 'store', img: state.imgUrl?.id === p.id ? state.imgUrl.url : (p.images || [])[0] || '', checked: true };
+    list = list.some((x) => x.id === p.id) ? list.map((x) => (x.id === p.id ? { ...x, ...item, qty: x.qty } : x)) : [item, ...list];
     save('wish', list);
     renderResult();
     show('result');
-    toast('매장 가격으로 바꿨어요');
+    toast('매장 가격으로 찜에 저장했어요');
   };
 }
 
@@ -878,8 +936,15 @@ async function demoApi(path, body) {
   const pick = (id) => demoProducts.products.find((p) => p.id === Number(id));
   if (path.startsWith('/api/info?product=')) return { product: pick(path.split('=')[1]) };
   if (path === '/api/info') return { rate100, rateDate: demoProducts.meta.rateDate, productCount: demoProducts.products.length };
-  if (path === '/api/identify') return { found: true, product: pick(30), candidates: [], readText: '', nameGuess: '' };
+  if (path === '/api/identify') {
+    if (params.has('nf')) {
+      const c = demoProducts.products.slice(1, 3).map((p) => ({ id: p.id, name: p.name, vol: p.vol, yen: p.yen, img: '' }));
+      return { found: false, product: null, lowConfidenceProduct: null, candidates: c, readText: '', nameGuess: '오페라 마이 래쉬', searchText: 'オペラ マイラッシュ' };
+    }
+    return { found: true, product: pick(30), candidates: [], readText: '', nameGuess: '' };
+  }
   if (path === '/api/insight') return { features: [{ key: '자외선 차단', text: 'SPF40 PA+++' }] };
+  if (path.startsWith('/api/search')) return { results: demoProducts.products.slice(0, 3).map((p) => ({ id: p.id, name: p.name, vol: p.vol, yen: p.yen, img: '' })) };
   if (path === '/api/allergy') return { terms: ['티트리잎오일', '티트리'] };
   if (path === '/api/pricetag') {
     const fail = Math.random() < 0.5;

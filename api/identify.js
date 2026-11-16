@@ -5,7 +5,7 @@
 //   ③ AI가 그 후보 20개 중에서 같은 제품을 고른다 (글자만, 이미지 없이)
 // 제품이 적으면(SMALL_DB 이하) ②를 건너뛰고 전체 목록을 쓴다.
 import { askWithImage, askText } from '../lib/claude.js';
-import { getDb, findProduct, publicProduct } from '../lib/products.js';
+import { getDb, findProduct, publicProduct, productImages } from '../lib/products.js';
 import { shortlist } from '../lib/shortlist.js';
 import { sendJson, readBody, handleError } from '../lib/http.js';
 
@@ -83,15 +83,16 @@ ${pool.map(line).join('\n')}
       .map(pick).filter(Boolean)
       .filter((p) => !product || p.id !== product.id)
       .slice(0, 3)
-      .map((p) => ({ id: p.id, name: p.name, vol: p.vol }));
+      .map((p) => ({ id: p.id, name: p.name, vol: p.vol, yen: p.yen, img: productImages(p.jan)[0] || '' }));
 
     return sendJson(res, 200, {
       found: Boolean(confident),
       product: confident ? publicProduct(db, product) : null,
-      lowConfidenceProduct: product && !confident ? { id: product.id, name: product.name, vol: product.vol } : null,
+      lowConfidenceProduct: product && !confident ? { id: product.id, name: product.name, vol: product.vol, yen: product.yen, img: productImages(product.jan)[0] || '' } : null,
       candidates,
       readText: read.read_text || '',
       nameGuess: read.name_ko_guess || '',
+      searchText: [read.brand, read.product_name, read.shade].filter(Boolean).join(' ').slice(0, 80),
       rate: { rate100: db.meta.rate100, date: db.meta.rateDate },
       searched: pool.length,
     });
