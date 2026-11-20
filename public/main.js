@@ -221,17 +221,15 @@ function allergyHits(ings) {
 }
 // 퍼스널컬러 카드: 색조 제품만. 출처가 확인된 추천만 보여주고 추측하지 않는다.
 function pcCard(pc) {
-  if (!pc) return '';
+  if (!pc || !pc.seasons.length) return '';
   const mine = getProfile().colors;
-  const src = pc.source ? `<small>출처: <a href="${esc(pc.source.url)}" target="_blank" rel="noopener">${esc(pc.source.name)}</a></small>` : '';
   const list = pc.seasons.join('·');
-  // 출처가 확인되지 않은 제품은 아무것도 보여주지 않는다
-  if (!pc.seasons.length) return '';
-  if (!mine.length) return `<div class="pc-card">🎨 <strong>${esc(list)}</strong>에게 추천된 색이에요${src}<small>내 퍼스널컬러를 등록하면 맞는지 알려드려요</small></div>`;
   const hit = mine.filter((c) => pc.seasons.includes(c));
-  if (hit.length) return `<div class="pc-card hit">🎨 내 퍼스널컬러(<strong>${esc(hit.join('·'))}</strong>)에 추천된 색이에요${src}</div>`;
-  return `<div class="pc-card">🎨 <strong>${esc(list)}</strong>에게 추천된 색이에요 · 내 퍼스널컬러(${esc(mine.join('·'))})는 추천 목록에 없어요${src}</div>`;
+  if (hit.length) return `<div class="pc-card hit">🎨 내 퍼스널컬러(<strong>${esc(hit.join('·'))}</strong>)에 맞는 색이에요</div>`;
+  return `<div class="pc-card">🎨 <strong>${esc(list)}</strong>에게 어울리는 색이에요</div>`;
 }
+// 출처는 시트('퍼스널컬러 출처')에만 남기고 화면에는 띄우지 않는다
+
 function allergyAlert(ings) {
   const { registered, hits } = allergyHits(ings);
   if (!registered) return '';
