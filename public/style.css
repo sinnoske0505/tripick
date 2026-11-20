@@ -385,3 +385,10 @@ body, .p-name, .nm, .bar-title, .sheet h2, .sub { word-break: keep-all; overflow
 .tag-hint { margin: 0; font-size: 14px; color: var(--sub); }
 .budget-btn { align-self: flex-start; font-size: 14px; color: var(--ink); text-decoration: underline; }
 .yen-edit input::-webkit-inner-spin-button, .yen-edit input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; } .yen-edit input { -moz-appearance: textfield; }
+
+/* 퍼스널컬러 카드 (밀키 핑크, 경고색 아님) */
+.pc-card { border-radius: 16px; padding: 14px 16px; font-size: 16px; line-height: 1.5; background: var(--milk); }
+.pc-card.hit { border: 1.5px solid var(--primary); }
+.pc-card.none { background: var(--surface); box-shadow: var(--shadow); font-size: 15px; }
+.pc-card small { display: block; margin-top: 4px; font-size: 14px; color: var(--sub); }
+.pc-card small a { color: var(--sub); text-decoration: underline; }
