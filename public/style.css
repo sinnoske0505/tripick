@@ -392,3 +392,22 @@ body, .p-name, .nm, .bar-title, .sheet h2, .sub { word-break: keep-all; overflow
 .pc-card.none { background: var(--surface); box-shadow: var(--shadow); font-size: 15px; }
 .pc-card small { display: block; margin-top: 4px; font-size: 14px; color: var(--sub); }
 .pc-card small a { color: var(--sub); text-decoration: underline; }
+
+/* 내 피부 정보: 글자 사이 여유 (화면 높이에 맞춰 늘고 줄어듦, 한 화면 유지) */
+#profile-form { gap: clamp(18px, 3.6vh, 34px); }
+#profile-form .field { gap: clamp(10px, 1.6vh, 14px); }
+#profile-form .field-label { line-height: 1.5; letter-spacing: 0.2px; }
+#profile-form .field-label span { margin-left: 10px; font-size: 14px; color: var(--sub); }
+#profile-form .choices { gap: 10px; }
+#profile-form .choices button { min-height: clamp(44px, 5.6vh, 50px); letter-spacing: 0.2px; }
+#s-profile .page-copy { margin-bottom: clamp(4px, 1.2vh, 12px); }
+#s-profile .page-copy h1 { margin-bottom: 10px; }
+#s-profile .page-copy p { line-height: 1.6; }
+#profile-form #profile-save { margin-top: clamp(4px, 1vh, 10px); }
+@media (max-height: 700px) {
+  #s-profile { gap: 10px; padding-bottom: calc(env(safe-area-inset-bottom) + 12px); }
+  #profile-form { gap: 16px; }
+  #profile-form .field { gap: 9px; }
+  #profile-form #profile-save { margin-top: 0; }
+  #s-profile .page-copy { margin-bottom: 0; }
+}
