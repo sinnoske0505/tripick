@@ -225,9 +225,8 @@ function pcCard(pc) {
   const mine = getProfile().colors;
   const src = pc.source ? `<small>출처: <a href="${esc(pc.source.url)}" target="_blank" rel="noopener">${esc(pc.source.name)}</a></small>` : '';
   const list = pc.seasons.join('·');
-  if (!pc.seasons.length) {
-    return mine.length ? `<div class="pc-card none">🎨 이 색의 퍼스널컬러 추천 정보는 아직 찾지 못했어요<small>브랜드·뷰티 매체·전문가가 밝힌 정보만 보여드려요</small></div>` : '';
-  }
+  // 출처가 확인되지 않은 제품은 아무것도 보여주지 않는다
+  if (!pc.seasons.length) return '';
   if (!mine.length) return `<div class="pc-card">🎨 <strong>${esc(list)}</strong>에게 추천된 색이에요${src}<small>내 퍼스널컬러를 등록하면 맞는지 알려드려요</small></div>`;
   const hit = mine.filter((c) => pc.seasons.includes(c));
   if (hit.length) return `<div class="pc-card hit">🎨 내 퍼스널컬러(<strong>${esc(hit.join('·'))}</strong>)에 추천된 색이에요${src}</div>`;
